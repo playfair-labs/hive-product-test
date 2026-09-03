@@ -62,8 +62,12 @@ export function brisbaneDate(now = new Date()): string {
   }).format(now)
 }
 
-/** Day page opens on the event date, or with ?preview=1 */
+/** Open the full day page now (Lloyd sample). Set false to lock until 19 Sep. */
+export const DAY_PAGE_OPEN_NOW = true
+
+/** Day page opens on the event date, with ?preview=1, or when DAY_PAGE_OPEN_NOW */
 export function isDayPageOpen(params: URLSearchParams, now = new Date()): boolean {
+  if (DAY_PAGE_OPEN_NOW) return true
   if (params.get('preview') === '1') return true
   return brisbaneDate(now) >= EVENT.isoDate
 }

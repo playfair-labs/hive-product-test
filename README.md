@@ -25,7 +25,7 @@ Al does everything else in the **Operator Console** (not linked from guest invit
 
 No public “places left” counter on the invite. After they confirm they see **You are X of 8**. Guests never see other sessions.
 
-Waitlist + film consent live on **On the day**. Until Sat 19 Sep (Brisbane) that page only says “More to come on the day…”. Preview: add `?preview=1`.
+Waitlist + film consent live on **On the day**. Currently unlocked for the Lloyd sample (`DAY_PAGE_OPEN_NOW` in `src/data/sessions.ts`). Set that false to lock until Sat 19 Sep. Preview: add `?preview=1`.
 
 Staff **Admin** is a quiet footer link (PIN gated). The player list lives on that phone; RSVPs also email `play@`. Paste names from the inbox if they confirmed on another device.
 
