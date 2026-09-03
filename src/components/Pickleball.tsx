@@ -1,22 +1,16 @@
 type Props = {
   className?: string
   size?: number
-  /** Extra CSS transform for spin (applied on inner) */
-  spinDeg?: number
-  squashed?: boolean
 }
 
-/** Realistic-looking ball: artwork + CSS sphere lighting / depth */
-export function Pickleball({ className, size = 56, spinDeg = 0, squashed = false }: Props) {
+/** Pickleball artwork + CSS sphere lighting (envelope peek + CSS bounce fallback) */
+export function Pickleball({ className, size = 56 }: Props) {
   return (
     <div
-      className={`pickleball-3d${squashed ? ' is-squash' : ''}${className ? ` ${className}` : ''}`}
+      className={`pickleball-3d${className ? ` ${className}` : ''}`}
       style={{ width: size, height: size }}
     >
-      <div
-        className="pickleball-spin"
-        style={{ transform: `rotateZ(${spinDeg}deg) rotateY(${spinDeg * 0.35}deg)` }}
-      >
+      <div className="pickleball-spin">
         <img
           className="pickleball-art"
           src={`${import.meta.env.BASE_URL}pickleball.png`}

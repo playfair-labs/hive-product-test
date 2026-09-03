@@ -6,7 +6,6 @@ import {
   useState,
   type FormEvent,
   type ReactNode,
-  type RefObject,
 } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { BounceGuide } from '../components/BounceGuide'
@@ -52,7 +51,7 @@ function Section({
   return (
     <section className="section" ref={ref} id={id}>
       {eyebrow ? <p className="eyebrow">{eyebrow}</p> : null}
-      <h2 data-ball-target>{title}</h2>
+      <h2>{title}</h2>
       {children}
     </section>
   )
@@ -88,9 +87,6 @@ export function Invite({ session }: { session: Session }) {
   const [bounceActive, setBounceActive] = useState(skipIntro)
   const [heroRevealed, setHeroRevealed] = useState(skipIntro)
 
-  const inviteRef = useRef<HTMLDivElement | null>(null)
-  const wordRefs = useRef<(HTMLElement | null)[]>([])
-
   const onEnvelopeOpened = useCallback(() => {
     try {
       sessionStorage.setItem(OPENED_KEY, '1')
@@ -101,7 +97,7 @@ export function Invite({ session }: { session: Session }) {
     setBounceActive(true)
   }, [])
 
-  const onWordBounceDone = useCallback(() => {
+  const onIntroDone = useCallback(() => {
     setHeroRevealed(true)
   }, [])
 
@@ -179,15 +175,13 @@ export function Invite({ session }: { session: Session }) {
 
   return (
     <div className="stage">
-      <div className="invite" ref={inviteRef}>
+      <div className="invite">
         {showEnvelope ? <EnvelopeIntro onOpened={onEnvelopeOpened} /> : null}
 
         <BounceGuide
           active={bounceActive}
           reducedMotion={reducedMotion || alreadyOpened || forceOpen}
-          wordRefs={wordRefs as RefObject<(HTMLElement | null)[]>}
-          containerRef={inviteRef}
-          onWordBounceDone={onWordBounceDone}
+          onIntroDone={onIntroDone}
         />
 
         <header className={`hero${heroRevealed ? ' hero-revealed' : ' hero-waiting'}`}>
@@ -205,15 +199,8 @@ export function Invite({ session }: { session: Session }) {
                 {hasName && heroRevealed ? <p className="hero-hi">Hi, {guestName}</p> : null}
                 <p className={`brand${heroRevealed ? ' is-shown' : ''}`}>{EVENT.name}</p>
                 <h1 className="hero-title">
-                  {titleWords.map((word, i) => (
-                    <span
-                      key={word}
-                      className="hero-word"
-                      data-ball-target={i === 1 ? true : undefined}
-                      ref={(el) => {
-                        wordRefs.current[i] = el
-                      }}
-                    >
+                  {titleWords.map((word) => (
+                    <span key={word} className="hero-word">
                       {word}
                     </span>
                   ))}

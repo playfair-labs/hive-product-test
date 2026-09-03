@@ -1,182 +1,110 @@
-import { useEffect, useRef, useState, type RefObject } from 'react'
+import { lazy, Suspense, useEffect, useState } from 'react'
 import { Pickleball } from './Pickleball'
-
-type Phase = 'launch' | 'words' | 'scroll' | 'hidden'
+import { RIV_SRC } from './riveBall'
 
 type Props = {
   active: boolean
   reducedMotion: boolean
-  wordRefs: RefObject<(HTMLElement | null)[]>
-  containerRef: RefObject<HTMLElement | null>
-  onWordBounceDone: () => void
+  onIntroDone: () => void
 }
 
-type Pos = { x: number; y: number }
+type Mode = 'pending' | 'rive' | 'css'
 
-function centerOf(el: HTMLElement, container: HTMLElement): Pos {
-  const er = el.getBoundingClientRect()
-  const cr = container.getBoundingClientRect()
-  return {
-    x: er.left - cr.left + er.width / 2,
-    y: er.top - cr.top + er.height / 2,
-  }
-}
+const RiveIntroBall = lazy(() =>
+  import('./RiveIntroBall').then((m) => ({ default: m.RiveIntroBall })),
+)
 
-export function BounceGuide({
-  active,
-  reducedMotion,
-  wordRefs,
-  containerRef,
-  onWordBounceDone,
-}: Props) {
-  const [phase, setPhase] = useState<Phase>('hidden')
-  const [pos, setPos] = useState<Pos>({ x: 0, y: 0 })
-  const [visible, setVisible] = useState(false)
-  const [spin, setSpin] = useState(0)
-  const [squashed, setSquashed] = useState(false)
-  const [flyClass, setFlyClass] = useState('')
-  const doneRef = useRef(false)
-  const spinRef = useRef(0)
+/**
+ * Lightweight intro ball: one bounce + short idle, then fade.
+ * Prefer public/pickleball.riv (state machine "Bounce", bool "play").
+ * Falls back to CSS if the .riv is missing — Rive runtime is code-split.
+ *
+ * Rive AI prompt for Al:
+ * Create a pickleball on a transparent artboard. Add a state machine named Bounce
+ * with states: intro (one bounce: fall, squash on impact, rebound with slight spin),
+ * then idle (gentle 4px vertical bob loop). Trigger: boolean input play starts intro;
+ * when intro finishes go to idle. Keep file tiny — no textures, few shapes.
+ */
+export function BounceGuide({ active, reducedMotion, onIntroDone }: Props) {
+  const [mode, setMode] = useState<Mode>('pending')
 
   useEffect(() => {
     if (!active) return
-    const container = containerRef.current
-    if (!container) return
-
     if (reducedMotion) {
-      doneRef.current = true
-      onWordBounceDone()
-      setPhase('scroll')
-      setVisible(true)
+      setMode('css')
       return
     }
-
-    setPhase('launch')
-    setVisible(true)
-    const cr = container.getBoundingClientRect()
-    setPos({ x: cr.width / 2, y: 110 })
-
     let cancelled = false
-    const words = () => (wordRefs.current || []).filter(Boolean) as HTMLElement[]
-
-    function addSpin(delta: number) {
-      spinRef.current += delta
-      setSpin(spinRef.current)
-    }
-
-    async function hopTo(el: HTMLElement) {
-      const target = centerOf(el, container!)
-      // Rise with spin
-      setFlyClass('is-rising')
-      setSquashed(false)
-      setPos({ x: target.x, y: target.y - 72 })
-      addSpin(140)
-      await wait(260)
-      if (cancelled) return
-      // Fall (faster)
-      setFlyClass('is-falling')
-      addSpin(200)
-      setPos({ x: target.x, y: target.y - 6 })
-      await wait(200)
-      if (cancelled) return
-      // Squash + word hit
-      setFlyClass('is-impact')
-      setSquashed(true)
-      el.classList.add('word-hit')
-      await wait(90)
-      if (cancelled) return
-      // Small rebound
-      setSquashed(false)
-      setFlyClass('is-rising')
-      setPos({ x: target.x, y: target.y - 22 })
-      addSpin(60)
-      await wait(140)
-      if (cancelled) return
-      setFlyClass('is-falling')
-      setPos({ x: target.x, y: target.y - 6 })
-      await wait(160)
-      el.classList.remove('word-hit')
-      setFlyClass('')
-      setSquashed(false)
-    }
-
-    async function run() {
-      await wait(200)
-      if (cancelled) return
-      setPhase('words')
-      const list = words()
-      for (let i = 0; i < list.length; i++) {
+    fetch(RIV_SRC)
+      .then(async (res) => {
         if (cancelled) return
-        await hopTo(list[i]!)
-        await wait(60)
-      }
-      if (cancelled) return
-      if (!doneRef.current) {
-        doneRef.current = true
-        onWordBounceDone()
-      }
-      setPhase('scroll')
-    }
-
-    void run()
+        if (!res.ok) {
+          setMode('css')
+          return
+        }
+        const ct = (res.headers.get('content-type') || '').toLowerCase()
+        if (ct.includes('text/html') || ct.includes('text/plain')) {
+          setMode('css')
+          return
+        }
+        const buf = await res.arrayBuffer()
+        if (cancelled) return
+        setMode(buf.byteLength > 32 ? 'rive' : 'css')
+      })
+      .catch(() => {
+        if (!cancelled) setMode('css')
+      })
     return () => {
       cancelled = true
     }
-  }, [active, reducedMotion, containerRef, wordRefs, onWordBounceDone])
+  }, [active, reducedMotion])
 
-  useEffect(() => {
-    if (phase !== 'scroll' || !visible) return
-    const container = containerRef.current
-    if (!container) return
+  if (!active || mode === 'pending') return null
 
-    const targets = () =>
-      Array.from(container.querySelectorAll<HTMLElement>('[data-ball-target]'))
-
-    const io = new IntersectionObserver(
-      (entries) => {
-        const visibleEntries = entries
-          .filter((e) => e.isIntersecting)
-          .sort((a, b) => b.intersectionRatio - a.intersectionRatio)
-        const best = visibleEntries[0]?.target as HTMLElement | undefined
-        if (!best) return
-        const next = centerOf(best, container)
-        setFlyClass('is-scroll-hop')
-        setSpin((s) => s + 90)
-        setPos({ x: next.x, y: next.y - 6 })
-        window.setTimeout(() => setFlyClass(''), 450)
-      },
-      { root: null, threshold: [0.35, 0.55, 0.75], rootMargin: '-15% 0px -45% 0px' },
+  if (mode === 'rive' && !reducedMotion) {
+    return (
+      <Suspense fallback={null}>
+        <RiveIntroBall onIntroDone={onIntroDone} />
+      </Suspense>
     )
+  }
 
-    targets().forEach((el) => io.observe(el))
-    const first = targets()[0]
-    if (first) {
-      const next = centerOf(first, container)
-      setPos({ x: next.x, y: next.y - 6 })
-    }
-
-    return () => io.disconnect()
-  }, [phase, visible, containerRef])
-
-  if (!visible) return null
-
-  const size = phase === 'scroll' ? 44 : 58
-
-  return (
-    <div
-      className={`bounce-ball ${flyClass}`}
-      style={{
-        transform: `translate(${pos.x}px, ${pos.y}px) translate(-50%, -50%)`,
-      }}
-      aria-hidden="true"
-    >
-      <Pickleball size={size} spinDeg={spin} squashed={squashed} />
-    </div>
-  )
+  return <CssIntroBall reducedMotion={reducedMotion} onIntroDone={onIntroDone} />
 }
 
-function wait(ms: number) {
-  return new Promise<void>((resolve) => {
-    window.setTimeout(resolve, ms)
-  })
+function CssIntroBall({
+  reducedMotion,
+  onIntroDone,
+}: {
+  reducedMotion: boolean
+  onIntroDone: () => void
+}) {
+  const [phase, setPhase] = useState<'intro' | 'idle' | 'gone'>(
+    reducedMotion ? 'gone' : 'intro',
+  )
+
+  useEffect(() => {
+    if (reducedMotion) {
+      onIntroDone()
+      return
+    }
+    const unlock = window.setTimeout(onIntroDone, 720)
+    const toIdle = window.setTimeout(() => setPhase('idle'), 900)
+    const toGone = window.setTimeout(() => setPhase('gone'), 3800)
+    return () => {
+      window.clearTimeout(unlock)
+      window.clearTimeout(toIdle)
+      window.clearTimeout(toGone)
+    }
+  }, [reducedMotion, onIntroDone])
+
+  if (phase === 'gone') return null
+
+  return (
+    <div className={`bounce-ball bounce-ball--css is-${phase}`} aria-hidden="true">
+      <div className="bounce-ball-motion">
+        <Pickleball size={56} className="bounce-ball-spin" />
+      </div>
+    </div>
+  )
 }
