@@ -113,9 +113,15 @@ export function Invite({ session }: { session: Session }) {
     <div className="stage">
       <div className="invite">
         <header className="hero">
-          <div className="seal" aria-hidden="true">
-            <div className="seal-ring">H</div>
-            <div className="seal-label">Private invitation</div>
+          <div className="hero-logo-wrap">
+            <img
+              className="hero-logo"
+              src={`${import.meta.env.BASE_URL}hive-logo.png`}
+              alt="The Pickleball Hive"
+              width={900}
+              height={825}
+            />
+            <p className="seal-label">Private invitation</p>
           </div>
           <div className="hero-copy">
             <p className="brand">{EVENT.name}</p>
@@ -123,14 +129,6 @@ export function Invite({ session }: { session: Session }) {
             <p className="hero-sub">
               An exclusive chance to test a new product designed to enhance your pickleball game.
             </p>
-          </div>
-          <div className="hero-cta">
-            <a className="btn btn-primary btn-block" href="#rsvp">
-              Confirm your place
-            </a>
-            <a className="btn btn-ghost btn-block" href="#details">
-              See the details
-            </a>
           </div>
         </header>
 
