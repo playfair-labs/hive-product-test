@@ -25,13 +25,15 @@ Al does everything else in the **Operator Console** (not linked from guest invit
 
 No public “places left” counter on the invite. After they confirm they see **You are X of 8**. Guests never see other sessions.
 
+Waitlist + film consent live on **On the day**. Until Sat 19 Sep (Brisbane) that page only says “More to come on the day…”. Preview: add `?preview=1`.
+
 ### Guest link shape
 
 ```
 https://playfair-labs.github.io/hive-product-test/9am?name=Jane%20Smith
 ```
 
-Without `?name=`, RSVP is disabled. Edit times in `src/data/sessions.ts`.
+Personal links lock the name. Without `?name=`, guests type their name. Edit times in `src/data/sessions.ts`.
 
 ### Optional live RSVP webhook
 

@@ -51,46 +51,47 @@ function guestNameFromParams(params: URLSearchParams): string {
 
 export function Invite({ session }: { session: Session }) {
   const [searchParams] = useSearchParams()
-  const guestName = guestNameFromParams(searchParams)
-  const hasName = guestName.length > 0
+  const lockedName = guestNameFromParams(searchParams)
+  const hasLockedName = lockedName.length > 0
 
+  const [typedName, setTypedName] = useState('')
   const [rsvpDone, setRsvpDone] = useState(false)
   const [place, setPlace] = useState<number | null>(null)
-  const [waitDone, setWaitDone] = useState(false)
   const [rsvpBusy, setRsvpBusy] = useState(false)
-  const [waitBusy, setWaitBusy] = useState(false)
   const [rsvpError, setRsvpError] = useState('')
-  const [waitError, setWaitError] = useState('')
+
+  const guestName = hasLockedName ? lockedName : typedName.trim()
 
   useEffect(() => {
-    if (!hasName) return
-    const saved = readLocalRsvp(session.id, guestName)
+    if (!hasLockedName) return
+    const saved = readLocalRsvp(session.id, lockedName)
     if (!saved) return
     setRsvpDone(true)
     setPlace(saved.place)
-  }, [guestName, hasName, session.id])
+  }, [hasLockedName, lockedName, session.id])
 
-  const consentTo = hasName
-    ? `/${session.id}/consent?name=${encodeURIComponent(guestName)}`
-    : `/${session.id}/consent`
+  const dayTo = guestName
+    ? `/${session.id}/day?name=${encodeURIComponent(guestName)}`
+    : `/${session.id}/day`
 
   async function onRsvp(e: FormEvent<HTMLFormElement>) {
     e.preventDefault()
     setRsvpError('')
-    if (!hasName) {
-      setRsvpError('This invite needs your personal link from The Hive.')
+    const fd = new FormData(e.currentTarget)
+    const name = (hasLockedName ? lockedName : String(fd.get('name') || '')).trim()
+    if (!name) {
+      setRsvpError('Please add your name.')
       return
     }
-    const fd = new FormData(e.currentTarget)
     if (fd.get('confidential') !== 'on') {
       setRsvpError('Please agree to keep things private.')
       return
     }
     setRsvpBusy(true)
     try {
-      const seat = await claimSeat(session.id, guestName)
+      const seat = await claimSeat(session.id, name)
       await submitForm('rsvp', {
-        name: guestName,
+        name,
         session: session.id,
         time: session.timeLabel,
         confidentiality: 'yes',
@@ -98,43 +99,14 @@ export function Invite({ session }: { session: Session }) {
         place: seat ? String(seat) : '',
         of: String(SESSION_CAPACITY),
       })
-      saveLocalRsvp(session.id, guestName, seat)
+      saveLocalRsvp(session.id, name, seat)
+      if (!hasLockedName) setTypedName(name)
       setPlace(seat)
       setRsvpDone(true)
     } catch (err) {
       setRsvpError(err instanceof Error ? err.message : 'Something went wrong')
     } finally {
       setRsvpBusy(false)
-    }
-  }
-
-  async function onWaitlist(e: FormEvent<HTMLFormElement>) {
-    e.preventDefault()
-    setWaitError('')
-    const fd = new FormData(e.currentTarget)
-    const name = String(fd.get('name') || guestName || '').trim()
-    const email = String(fd.get('email') || '').trim()
-    const phone = String(fd.get('phone') || '').trim()
-    const interested = fd.get('interested') === 'on'
-    if (!name || !email || !phone || !interested) {
-      setWaitError('Please fill everything in and tick that you’d like to be first in line.')
-      return
-    }
-    setWaitBusy(true)
-    try {
-      await submitForm('waitlist', {
-        name,
-        email,
-        phone,
-        session: session.id,
-        time: session.timeLabel,
-        interested: 'yes',
-      })
-      setWaitDone(true)
-    } catch (err) {
-      setWaitError(err instanceof Error ? err.message : 'Something went wrong')
-    } finally {
-      setWaitBusy(false)
     }
   }
 
@@ -153,7 +125,7 @@ export function Invite({ session }: { session: Session }) {
                 <p className="seal-label">Private invitation</p>
               </div>
               <div className="hero-copy">
-                {hasName ? <p className="hero-hi">Hi, {guestName}</p> : null}
+                {hasLockedName ? <p className="hero-hi">Hi, {lockedName}</p> : null}
                 <p className="brand">{EVENT.name}</p>
                 <h1 className="hero-title">You’ve been selected</h1>
                 <p className="hero-sub">
@@ -240,12 +212,6 @@ export function Invite({ session }: { session: Session }) {
                 <p className="form-note">
                   This invitation is for you — please don’t share the link.
                 </p>
-                {!hasName ? (
-                  <p className="form-error">
-                    This invite needs your personal link from The Hive. Please use the link you were
-                    sent.
-                  </p>
-                ) : null}
                 {rsvpDone ? (
                   <div className="success">
                     <h3>You’re in</h3>
@@ -256,90 +222,40 @@ export function Invite({ session }: { session: Session }) {
                     ) : null}
                     <p>
                       See you {EVENT.dateShort} at {session.timeLabel}
-                      {hasName ? `, ${guestName}` : ''}. Keep this link — you may need it on the day.
+                      {guestName ? `, ${guestName}` : ''}. Keep this link — you may need it on the day.
                     </p>
                   </div>
                 ) : (
                   <form className="form" onSubmit={onRsvp}>
-                    {hasName ? (
+                    {hasLockedName ? (
                       <div className="name-locked">
                         <span>Confirming for</span>
-                        {guestName}
+                        {lockedName}
                       </div>
-                    ) : null}
+                    ) : (
+                      <label className="field">
+                        Your name
+                        <input
+                          name="name"
+                          type="text"
+                          autoComplete="name"
+                          required
+                          value={typedName}
+                          onChange={(e) => setTypedName(e.target.value)}
+                          placeholder="Your full name"
+                        />
+                      </label>
+                    )}
                     <label className="check">
-                      <input name="confidential" type="checkbox" required disabled={!hasName} />
+                      <input name="confidential" type="checkbox" required />
                       <span>
                         I agree to keep the product confidential and will not take photographs
                         during the session.
                       </span>
                     </label>
                     {rsvpError ? <p className="form-error">{rsvpError}</p> : null}
-                    <button
-                      className="btn btn-primary btn-block"
-                      type="submit"
-                      disabled={rsvpBusy || !hasName}
-                    >
+                    <button className="btn btn-primary btn-block" type="submit" disabled={rsvpBusy}>
                       {rsvpBusy ? 'Sending…' : 'Confirm attendance'}
-                    </button>
-                  </form>
-                )}
-              </Section>
-
-              <Section eyebrow="On the day · or anytime" title="Want to be among the first?">
-                <p>
-                  If you love what you try and want to be among the first to get one when it
-                  arrives, leave your details here. Same invitation — no rush.
-                </p>
-                {waitDone ? (
-                  <div className="success">
-                    <h3>You’re on the list</h3>
-                    <p>We’ll be in touch when it’s time. Thank you.</p>
-                  </div>
-                ) : (
-                  <form className="form" onSubmit={onWaitlist}>
-                    <label className="field">
-                      Full name
-                      <input
-                        name="name"
-                        type="text"
-                        autoComplete="name"
-                        required
-                        defaultValue={guestName}
-                        readOnly={hasName}
-                        placeholder="Your full name"
-                      />
-                    </label>
-                    <label className="field">
-                      Email
-                      <input
-                        name="email"
-                        type="email"
-                        autoComplete="email"
-                        required
-                        placeholder="you@email.com"
-                      />
-                    </label>
-                    <label className="field">
-                      Phone
-                      <input
-                        name="phone"
-                        type="tel"
-                        autoComplete="tel"
-                        required
-                        placeholder="Mobile number"
-                      />
-                    </label>
-                    <label className="check">
-                      <input name="interested" type="checkbox" required />
-                      <span>
-                        Yes — I’d like to be among the first to get one when it arrives. Keep me in
-                        the loop.
-                      </span>
-                    </label>
-                    {waitError ? <p className="form-error">{waitError}</p> : null}
-                    <button className="btn btn-dark btn-block" type="submit" disabled={waitBusy}>
-                      {waitBusy ? 'Sending…' : 'Keep me first in line'}
                     </button>
                   </form>
                 )}
@@ -348,9 +264,9 @@ export function Invite({ session }: { session: Session }) {
               <p className="footer-mini">
                 From {EVENT.from}
                 <br />
-                <Link to={consentTo}>Day-of film consent</Link>
-                {' · '}
-                optional, no pressure
+                <Link className="footer-day" to={dayTo}>
+                  On the day
+                </Link>
               </p>
             </div>
       </div>

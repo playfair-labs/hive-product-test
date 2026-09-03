@@ -510,6 +510,16 @@ label.field {
   text-decoration: none;
 }
 
+.footer-day {
+  display: inline-flex;
+  margin-top: 10px;
+  padding: 12px 22px;
+  border-radius: 999px;
+  background: var(--green-deep);
+  color: var(--cream) !important;
+  font-size: 16px;
+}
+
 /* Consent page */
 .consent-page {
   padding:
@@ -531,6 +541,24 @@ label.field {
 .consent-page p {
   font-size: 19px;
   line-height: 1.55;
+}
+
+.day-heading {
+  font-family: Georgia, "Times New Roman", serif;
+  color: var(--green-deep);
+  margin: 0 0 12px;
+  font-size: 32px;
+  line-height: 1.15;
+}
+
+.day-teaser {
+  padding-top: 12px;
+}
+
+.day-rule {
+  border: 0;
+  border-top: 1px solid rgba(47, 107, 40, 0.18);
+  margin: 36px 0 28px;
 }
 
 /* —— Louise helper —— */

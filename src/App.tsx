@@ -1,7 +1,7 @@
-import { Navigate, Route, Routes, useParams } from 'react-router-dom'
+import { Navigate, Route, Routes, useParams, useSearchParams } from 'react-router-dom'
 import { getSession } from './data/sessions'
 import { Invite } from './pages/Invite'
-import { Consent } from './pages/Consent'
+import { Day } from './pages/Day'
 import { Louise } from './pages/Louise'
 import { Ops } from './pages/Ops'
 
@@ -19,11 +19,18 @@ function SessionInvite() {
   return <Invite session={session} />
 }
 
-function SessionConsent() {
+function SessionDay() {
   const { sessionId } = useParams()
   const session = getSession(sessionId)
   if (!session) return <Navigate to="/" replace />
-  return <Consent session={session} />
+  return <Day session={session} />
+}
+
+function ConsentToDay() {
+  const { sessionId } = useParams()
+  const [params] = useSearchParams()
+  const q = params.toString()
+  return <Navigate to={q ? `/${sessionId}/day?${q}` : `/${sessionId}/day`} replace />
 }
 
 export default function App() {
@@ -33,7 +40,8 @@ export default function App() {
       <Route path="/louise" element={<Louise />} />
       <Route path="/" element={<Navigate to="/9am" replace />} />
       <Route path="/:sessionId" element={<SessionInvite />} />
-      <Route path="/:sessionId/consent" element={<SessionConsent />} />
+      <Route path="/:sessionId/day" element={<SessionDay />} />
+      <Route path="/:sessionId/consent" element={<ConsentToDay />} />
       <Route path="*" element={<Navigate to="/9am" replace />} />
     </Routes>
   )

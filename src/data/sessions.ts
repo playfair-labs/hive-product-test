@@ -38,6 +38,8 @@ export const EVENT = {
   from: 'The Pickleball Hive',
   dateLabel: 'Saturday 19 September 2026',
   dateShort: 'Sat 19 Sep',
+  isoDate: '2026-09-19',
+  timeZone: 'Australia/Brisbane',
   rsvpDeadline: 'Saturday 12 September 2026',
   venue: 'The Pickleball Hive',
   address: '1/47 Stringybark Rd, Buderim QLD 4556',
@@ -48,4 +50,20 @@ export function getSession(id: string | undefined): Session | null {
   if (!id) return null
   if (id in SESSIONS) return SESSIONS[id as SessionId]
   return null
+}
+
+/** Calendar date in Buderim, YYYY-MM-DD */
+export function brisbaneDate(now = new Date()): string {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: EVENT.timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(now)
+}
+
+/** Day page opens on the event date, or with ?preview=1 */
+export function isDayPageOpen(params: URLSearchParams, now = new Date()): boolean {
+  if (params.get('preview') === '1') return true
+  return brisbaneDate(now) >= EVENT.isoDate
 }
