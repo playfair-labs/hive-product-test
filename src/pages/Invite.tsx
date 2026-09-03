@@ -222,6 +222,9 @@ export function Invite({ session }: { session: Session }) {
 
           <Section title="We’d love you to join us." id="rsvp">
             <p className="form-note">RSVP by {EVENT.rsvpDeadline}.</p>
+            <p className="form-note">
+              This invitation is for you — please don’t share the link.
+            </p>
             {!hasName ? (
               <p className="form-error">
                 This invite needs your personal link from The Hive. Please use the link you were

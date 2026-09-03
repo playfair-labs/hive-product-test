@@ -2,6 +2,7 @@ import { Navigate, Route, Routes, useParams } from 'react-router-dom'
 import { getSession } from './data/sessions'
 import { Invite } from './pages/Invite'
 import { Consent } from './pages/Consent'
+import { Louise } from './pages/Louise'
 
 function SessionInvite() {
   const { sessionId } = useParams()
@@ -27,6 +28,7 @@ function SessionConsent() {
 export default function App() {
   return (
     <Routes>
+      <Route path="/louise" element={<Louise />} />
       <Route path="/" element={<Navigate to="/9am" replace />} />
       <Route path="/:sessionId" element={<SessionInvite />} />
       <Route path="/:sessionId/consent" element={<SessionConsent />} />
