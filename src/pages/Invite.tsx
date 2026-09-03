@@ -70,20 +70,23 @@ export function Invite({ session }: { session: Session }) {
   const [searchParams] = useSearchParams()
   const guestName = guestNameFromParams(searchParams)
   const hasName = guestName.length > 0
+  const forceOpen = searchParams.get('open') === '1'
 
   const reducedMotion = useMemo(() => prefersReducedMotion(), [])
   const alreadyOpened = useMemo(() => {
+    if (forceOpen) return true
     try {
       return sessionStorage.getItem(OPENED_KEY) === '1'
     } catch {
       return false
     }
-  }, [])
+  }, [forceOpen])
 
-  const [showEnvelope, setShowEnvelope] = useState(!alreadyOpened && !reducedMotion)
-  const [contentReady, setContentReady] = useState(alreadyOpened || reducedMotion)
-  const [bounceActive, setBounceActive] = useState(alreadyOpened || reducedMotion)
-  const [heroRevealed, setHeroRevealed] = useState(alreadyOpened || reducedMotion)
+  const skipIntro = alreadyOpened || reducedMotion || forceOpen
+
+  const [showEnvelope, setShowEnvelope] = useState(!skipIntro)
+  const [bounceActive, setBounceActive] = useState(skipIntro)
+  const [heroRevealed, setHeroRevealed] = useState(skipIntro)
 
   const inviteRef = useRef<HTMLDivElement | null>(null)
   const wordRefs = useRef<(HTMLElement | null)[]>([])
@@ -95,7 +98,6 @@ export function Invite({ session }: { session: Session }) {
       /* ignore */
     }
     setShowEnvelope(false)
-    setContentReady(true)
     setBounceActive(true)
   }, [])
 
@@ -180,17 +182,15 @@ export function Invite({ session }: { session: Session }) {
       <div className="invite" ref={inviteRef}>
         {showEnvelope ? <EnvelopeIntro onOpened={onEnvelopeOpened} /> : null}
 
-        {contentReady ? (
-          <>
-            <BounceGuide
-              active={bounceActive}
-              reducedMotion={reducedMotion || alreadyOpened}
-              wordRefs={wordRefs as RefObject<(HTMLElement | null)[]>}
-              containerRef={inviteRef}
-              onWordBounceDone={onWordBounceDone}
-            />
+        <BounceGuide
+          active={bounceActive}
+          reducedMotion={reducedMotion || alreadyOpened || forceOpen}
+          wordRefs={wordRefs as RefObject<(HTMLElement | null)[]>}
+          containerRef={inviteRef}
+          onWordBounceDone={onWordBounceDone}
+        />
 
-            <header className={`hero${heroRevealed ? ' hero-revealed' : ' hero-waiting'}`}>
+        <header className={`hero${heroRevealed ? ' hero-revealed' : ' hero-waiting'}`}>
               <div className={`hero-logo-wrap${heroRevealed ? ' is-shown' : ''}`}>
                 <img
                   className="hero-logo"
@@ -408,8 +408,6 @@ export function Invite({ session }: { session: Session }) {
                 optional, no pressure
               </p>
             </div>
-          </>
-        ) : null}
       </div>
     </div>
   )

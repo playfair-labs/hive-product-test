@@ -5,7 +5,22 @@ export type FormKind = 'rsvp' | 'waitlist' | 'consent'
 
 type Payload = Record<string, string>
 
-/** Posts to FormSubmit (email to Hive) + notifies ops board / optional webhook. */
+function mailtoFallback(kind: FormKind, payload: Payload): void {
+  const lines = Object.entries(payload)
+    .filter(([k]) => !k.startsWith('_'))
+    .map(([k, v]) => `${k}: ${v}`)
+  const subject = `[Hive Product Test] ${kind.toUpperCase()} · ${payload.session || 'session'}`
+  const body = [`${EVENT.name} — ${kind}`, '', ...lines, '', `Sent from invitation (mailto fallback)`].join(
+    '\n',
+  )
+  const href = `mailto:${encodeURIComponent(EVENT.email)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
+  window.location.href = href
+}
+
+/**
+ * Prefer FormSubmit (email to Hive). If blocked/offline, fall back to mailto
+ * so ad blockers can’t kill the RSVP entirely.
+ */
 export async function submitForm(kind: FormKind, payload: Payload): Promise<void> {
   const endpoint = `https://formsubmit.co/ajax/${EVENT.email}`
   const body = {
@@ -16,19 +31,28 @@ export async function submitForm(kind: FormKind, payload: Payload): Promise<void
     ...payload,
   }
 
-  const res = await fetch(endpoint, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Accept: 'application/json',
-    },
-    body: JSON.stringify(body),
-  })
+  try {
+    const res = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+      },
+      body: JSON.stringify(body),
+    })
 
-  if (!res.ok) {
-    const text = await res.text().catch(() => '')
-    throw new Error(text || 'Could not send — please try again')
+    if (!res.ok) {
+      throw new Error(`FormSubmit ${res.status}`)
+    }
+
+    await notifyOpsBoard(kind, payload)
+    return
+  } catch {
+    mailtoFallback(kind, payload)
+    try {
+      await notifyOpsBoard(kind, payload)
+    } catch {
+      /* ignore */
+    }
   }
-
-  await notifyOpsBoard(kind, payload)
 }
