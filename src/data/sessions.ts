@@ -30,6 +30,9 @@ export const SESSIONS: Record<SessionId, Session> = {
   },
 }
 
+/** Each session is capped at 8 testers */
+export const SESSION_CAPACITY = 8
+
 export const EVENT = {
   name: 'The Hive Product Test',
   from: 'The Pickleball Hive',

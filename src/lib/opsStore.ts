@@ -1,5 +1,7 @@
 import type { SessionId } from '../data/sessions'
-import { SESSIONS } from '../data/sessions'
+import { SESSION_CAPACITY, SESSIONS } from '../data/sessions'
+
+export { SESSION_CAPACITY }
 
 export type Level = 'beginner' | 'intermediate' | 'advanced'
 export type GuestStatus = 'draft' | 'sent' | 'confirmed' | 'declined'
@@ -29,8 +31,6 @@ export const LEVEL_TO_SESSION: Record<Level, SessionId> = {
   intermediate: '10am',
   advanced: '11am',
 }
-
-export const SESSION_CAPACITY = 8
 
 export const PUBLIC_BASE = 'https://playfair-labs.github.io/hive-product-test'
 

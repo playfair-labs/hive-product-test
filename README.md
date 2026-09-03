@@ -23,7 +23,7 @@ Al does everything else in the **Operator Console** (not linked from guest invit
 4. Watch RSVPs in `play@` → mark **confirmed** on the status board (or **Sync from RSVP log** if you opened the invite in this same browser).
 5. If a session is under 8 → **Pull from bench** / ask Louise for a few more names only.
 
-No public “places left” counter. Guests never see other sessions.
+No public “places left” counter on the invite. After they confirm they see **You are X of 8**. Guests never see other sessions.
 
 ### Guest link shape
 

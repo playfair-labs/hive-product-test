@@ -482,6 +482,20 @@ label.field {
   line-height: 1.45;
 }
 
+.success .seat-count {
+  margin: 4px 0 14px;
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.success .seat-count strong {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 34px;
+  font-weight: 700;
+  color: var(--green-deep);
+  padding: 0 4px;
+}
+
 .footer-mini {
   text-align: center;
   font-size: 14px;

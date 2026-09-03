@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { EVENT, type Session } from '../data/sessions'
+import { EVENT, SESSION_CAPACITY, type Session } from '../data/sessions'
+import { claimSeat, readLocalRsvp, saveLocalRsvp } from '../lib/attendance'
 import { submitForm } from '../lib/submit'
 
 function useReveal() {
@@ -54,11 +55,20 @@ export function Invite({ session }: { session: Session }) {
   const hasName = guestName.length > 0
 
   const [rsvpDone, setRsvpDone] = useState(false)
+  const [place, setPlace] = useState<number | null>(null)
   const [waitDone, setWaitDone] = useState(false)
   const [rsvpBusy, setRsvpBusy] = useState(false)
   const [waitBusy, setWaitBusy] = useState(false)
   const [rsvpError, setRsvpError] = useState('')
   const [waitError, setWaitError] = useState('')
+
+  useEffect(() => {
+    if (!hasName) return
+    const saved = readLocalRsvp(session.id, guestName)
+    if (!saved) return
+    setRsvpDone(true)
+    setPlace(saved.place)
+  }, [guestName, hasName, session.id])
 
   const consentTo = hasName
     ? `/${session.id}/consent?name=${encodeURIComponent(guestName)}`
@@ -78,13 +88,18 @@ export function Invite({ session }: { session: Session }) {
     }
     setRsvpBusy(true)
     try {
+      const seat = await claimSeat(session.id, guestName)
       await submitForm('rsvp', {
         name: guestName,
         session: session.id,
         time: session.timeLabel,
         confidentiality: 'yes',
         no_photos: 'yes',
+        place: seat ? String(seat) : '',
+        of: String(SESSION_CAPACITY),
       })
+      saveLocalRsvp(session.id, guestName, seat)
+      setPlace(seat)
       setRsvpDone(true)
     } catch (err) {
       setRsvpError(err instanceof Error ? err.message : 'Something went wrong')
@@ -234,6 +249,11 @@ export function Invite({ session }: { session: Session }) {
                 {rsvpDone ? (
                   <div className="success">
                     <h3>You’re in</h3>
+                    {place ? (
+                      <p className="seat-count">
+                        You are <strong>{place}</strong> of {SESSION_CAPACITY}
+                      </p>
+                    ) : null}
                     <p>
                       See you {EVENT.dateShort} at {session.timeLabel}
                       {hasName ? `, ${guestName}` : ''}. Keep this link — you may need it on the day.
