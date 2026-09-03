@@ -4,10 +4,11 @@ import { RIV_SRC, RIVE_IDLE, RIVE_INTRO } from './riveBall'
 
 type Props = {
   onIntroDone: () => void
+  onFailed: () => void
 }
 
 /** Loaded only when public/pickleball.riv exists (code-split). */
-export function RiveIntroBall({ onIntroDone }: Props) {
+export function RiveIntroBall({ onIntroDone, onFailed }: Props) {
   const done = useRef(false)
   const [gone, setGone] = useState(false)
   const { rive, RiveComponent } = useRive({
@@ -15,10 +16,7 @@ export function RiveIntroBall({ onIntroDone }: Props) {
     animations: RIVE_INTRO,
     autoplay: true,
     onLoadError: () => {
-      if (!done.current) {
-        done.current = true
-        onIntroDone()
-      }
+      onFailed()
     },
   })
 
@@ -32,7 +30,7 @@ export function RiveIntroBall({ onIntroDone }: Props) {
       }
       rive.play(RIVE_IDLE)
     }, 900)
-    const hide = window.setTimeout(() => setGone(true), 3800)
+    const hide = window.setTimeout(() => setGone(true), 4800)
     return () => {
       window.clearTimeout(unlock)
       window.clearTimeout(hide)

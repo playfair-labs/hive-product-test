@@ -964,6 +964,18 @@ label.field {
   margin-left: -36px;
 }
 
+.bounce-ball--rive {
+  width: 96px;
+  height: 96px;
+  margin-left: -48px;
+}
+
+.bounce-rive-canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
 .bounce-ball-motion {
   width: 100%;
   height: 100%;

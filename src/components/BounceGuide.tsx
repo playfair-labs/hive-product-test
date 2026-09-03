@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react'
+import { lazy, Suspense, useEffect, useState } from 'react'
 import { Pickleball } from './Pickleball'
+import { RIV_SRC } from './riveBall'
 
 type Props = {
   active: boolean
@@ -7,17 +8,64 @@ type Props = {
   onIntroDone: () => void
 }
 
+type Mode = 'pending' | 'rive' | 'css'
+
+const RiveIntroBall = lazy(() =>
+  import('./RiveIntroBall').then((m) => ({ default: m.RiveIntroBall })),
+)
+
 /**
- * Lightweight intro ball: one CSS bounce + short idle, then fade.
- * PNG Pickleball only — reliable on Mac Safari and iPhone.
+ * Intro ball after envelope: prefer Rive (intro → idle), CSS PNG fallback.
+ * Regenerate via Rive MCP sit / export to public/pickleball.riv
  */
 export function BounceGuide({ active, reducedMotion, onIntroDone }: Props) {
+  const [mode, setMode] = useState<Mode>('pending')
+
   useEffect(() => {
-    if (!active || !reducedMotion) return
-    onIntroDone()
+    if (!active) return
+    if (reducedMotion) {
+      onIntroDone()
+      setMode('css')
+      return
+    }
+    let cancelled = false
+    fetch(RIV_SRC)
+      .then(async (res) => {
+        if (cancelled) return
+        if (!res.ok) {
+          setMode('css')
+          return
+        }
+        const ct = (res.headers.get('content-type') || '').toLowerCase()
+        if (ct.includes('text/html') || ct.includes('text/plain')) {
+          setMode('css')
+          return
+        }
+        const buf = await res.arrayBuffer()
+        if (cancelled) return
+        setMode(buf.byteLength > 32 ? 'rive' : 'css')
+      })
+      .catch(() => {
+        if (!cancelled) setMode('css')
+      })
+    return () => {
+      cancelled = true
+    }
   }, [active, reducedMotion, onIntroDone])
 
-  if (!active || reducedMotion) return null
+  if (!active || mode === 'pending') return null
+  if (reducedMotion) return null
+
+  if (mode === 'rive') {
+    return (
+      <Suspense fallback={null}>
+        <RiveIntroBall
+          onIntroDone={onIntroDone}
+          onFailed={() => setMode('css')}
+        />
+      </Suspense>
+    )
+  }
 
   return <CssIntroBall onIntroDone={onIntroDone} />
 }
