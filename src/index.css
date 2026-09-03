@@ -651,6 +651,156 @@ label.field {
   }
 }
 
+/* —— Operator console —— */
+.ops-page h2 {
+  margin: 0 0 10px;
+  font-family: Fraunces, Georgia, serif;
+  font-size: 22px;
+  color: var(--green-deep);
+}
+
+.ops-grid {
+  display: grid;
+  gap: 14px;
+}
+
+@media (min-width: 720px) {
+  .ops-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+  .invite.louise {
+    max-width: 920px;
+  }
+}
+
+.ops-card {
+  background: var(--white);
+  border-radius: 18px;
+  padding: 16px 18px 18px;
+  box-shadow: 0 4px 0 rgba(47, 107, 40, 0.06);
+}
+
+.ops-flash {
+  background: var(--green);
+  color: var(--ink);
+  font-weight: 800;
+  padding: 12px 14px;
+  border-radius: 12px;
+  margin: 0 0 12px;
+}
+
+.ops-capacity {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.ops-cap-pill {
+  background: var(--cream);
+  border-radius: 12px;
+  padding: 10px 12px;
+  display: grid;
+  gap: 2px;
+  font-size: 14px;
+}
+
+.ops-cap-pill strong {
+  color: var(--green-deep);
+  font-size: 13px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.ops-wave2 {
+  background: var(--green-soft);
+  border-radius: 14px;
+  padding: 14px;
+  margin-bottom: 14px;
+  font-size: 16px;
+}
+
+.ops-wave2 strong {
+  display: block;
+  margin-bottom: 8px;
+  color: var(--green-deep);
+}
+
+.ops-wave2 ul {
+  margin: 0;
+  padding-left: 1.1em;
+}
+
+.ops-wave2 li {
+  margin-bottom: 8px;
+}
+
+.ops-filter {
+  display: grid;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--green-deep);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  min-width: 160px;
+}
+
+.ops-table-wrap {
+  overflow-x: auto;
+  margin-top: 12px;
+}
+
+.ops-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 15px;
+}
+
+.ops-table th,
+.ops-table td {
+  text-align: left;
+  padding: 10px 8px;
+  border-bottom: 1px solid rgba(37, 37, 37, 0.1);
+  vertical-align: top;
+}
+
+.ops-table th {
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--green-deep);
+}
+
+.ops-email {
+  font-size: 13px;
+  color: rgba(37, 37, 37, 0.65);
+  margin: 2px 0;
+}
+
+.ops-link {
+  font-size: 12px;
+  color: var(--green-deep);
+  font-weight: 700;
+}
+
+.ops-status {
+  padding: 8px 10px;
+  font-size: 14px;
+}
+
+.ops-actions {
+  display: grid;
+  gap: 6px;
+  min-width: 100px;
+}
+
+.ops-actions .louise-copy {
+  width: 100%;
+  padding: 10px 12px;
+  font-size: 14px;
+}
+
 .missing {
   padding: 48px 24px;
   color: var(--cream);

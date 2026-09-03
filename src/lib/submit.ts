@@ -1,10 +1,11 @@
 import { EVENT } from '../data/sessions'
+import { notifyOpsBoard } from './opsNotify'
 
 export type FormKind = 'rsvp' | 'waitlist' | 'consent'
 
 type Payload = Record<string, string>
 
-/** Posts to FormSubmit (email to Hive). First real submit triggers their confirm email once. */
+/** Posts to FormSubmit (email to Hive) + notifies ops board / optional webhook. */
 export async function submitForm(kind: FormKind, payload: Payload): Promise<void> {
   const endpoint = `https://formsubmit.co/ajax/${EVENT.email}`
   const body = {
@@ -28,4 +29,6 @@ export async function submitForm(kind: FormKind, payload: Payload): Promise<void
     const text = await res.text().catch(() => '')
     throw new Error(text || 'Could not send — please try again')
   }
+
+  await notifyOpsBoard(kind, payload)
 }
