@@ -1,20 +1,8 @@
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type FormEvent,
-  type ReactNode,
-} from 'react'
+import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { BounceGuide } from '../components/BounceGuide'
 import { ConfidentialityZipper } from '../components/ConfidentialityZipper'
-import { EnvelopeIntro } from '../components/EnvelopeIntro'
 import { EVENT, type Session } from '../data/sessions'
 import { submitForm } from '../lib/submit'
-
-const OPENED_KEY = 'hive-invite-opened'
 
 function useReveal() {
   const ref = useRef<HTMLElement | null>(null)
@@ -61,46 +49,10 @@ function guestNameFromParams(params: URLSearchParams): string {
   return (params.get('name') || '').trim()
 }
 
-function prefersReducedMotion(): boolean {
-  return window.matchMedia('(prefers-reduced-motion: reduce)').matches
-}
-
 export function Invite({ session }: { session: Session }) {
   const [searchParams] = useSearchParams()
   const guestName = guestNameFromParams(searchParams)
   const hasName = guestName.length > 0
-  const forceOpen = searchParams.get('open') === '1'
-
-  const reducedMotion = useMemo(() => prefersReducedMotion(), [])
-  const alreadyOpened = useMemo(() => {
-    if (forceOpen) return true
-    try {
-      return sessionStorage.getItem(OPENED_KEY) === '1'
-    } catch {
-      return false
-    }
-  }, [forceOpen])
-
-  const skipIntro = alreadyOpened || reducedMotion || forceOpen
-
-  const [showEnvelope, setShowEnvelope] = useState(!skipIntro)
-  // Bounce only after a real envelope open — not on return visits / ?open=1
-  const [bounceActive, setBounceActive] = useState(false)
-  const [heroRevealed, setHeroRevealed] = useState(skipIntro)
-
-  const onEnvelopeOpened = useCallback(() => {
-    try {
-      sessionStorage.setItem(OPENED_KEY, '1')
-    } catch {
-      /* ignore */
-    }
-    setShowEnvelope(false)
-    setBounceActive(true)
-  }, [])
-
-  const onIntroDone = useCallback(() => {
-    setHeroRevealed(true)
-  }, [])
 
   const [confidential, setConfidential] = useState(false)
   const [rsvpDone, setRsvpDone] = useState(false)
@@ -113,8 +65,6 @@ export function Invite({ session }: { session: Session }) {
   const consentTo = hasName
     ? `/${session.id}/consent?name=${encodeURIComponent(guestName)}`
     : `/${session.id}/consent`
-
-  const titleWords = ['You’ve', 'been', 'selected']
 
   async function onRsvp(e: FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -177,16 +127,8 @@ export function Invite({ session }: { session: Session }) {
   return (
     <div className="stage">
       <div className="invite">
-        {showEnvelope ? <EnvelopeIntro onOpened={onEnvelopeOpened} /> : null}
-
-        <BounceGuide
-          active={bounceActive}
-          reducedMotion={reducedMotion}
-          onIntroDone={onIntroDone}
-        />
-
-        <header className={`hero${heroRevealed ? ' hero-revealed' : ' hero-waiting'}`}>
-              <div className={`hero-logo-wrap${heroRevealed ? ' is-shown' : ''}`}>
+        <header className="hero">
+              <div className="hero-logo-wrap">
                 <img
                   className="hero-logo"
                   src={`${import.meta.env.BASE_URL}hive-logo.png`}
@@ -197,23 +139,17 @@ export function Invite({ session }: { session: Session }) {
                 <p className="seal-label">Private invitation</p>
               </div>
               <div className="hero-copy">
-                {hasName && heroRevealed ? <p className="hero-hi">Hi, {guestName}</p> : null}
-                <p className={`brand${heroRevealed ? ' is-shown' : ''}`}>{EVENT.name}</p>
-                <h1 className="hero-title">
-                  {titleWords.map((word) => (
-                    <span key={word} className="hero-word">
-                      {word}
-                    </span>
-                  ))}
-                </h1>
-                <p className={`hero-sub${heroRevealed ? ' is-shown' : ''}`}>
+                {hasName ? <p className="hero-hi">Hi, {guestName}</p> : null}
+                <p className="brand">{EVENT.name}</p>
+                <h1 className="hero-title">You’ve been selected</h1>
+                <p className="hero-sub">
                   An exclusive chance to test a new product designed to enhance your pickleball
                   game.
                 </p>
               </div>
             </header>
 
-            <div className={`sheet${heroRevealed ? ' is-shown' : ' is-dimmed'}`}>
+            <div className="sheet">
               <Section title="You’re one of a small group">
                 <p>
                   You’ve been invited to come along and test a new product soon to hit the market —
