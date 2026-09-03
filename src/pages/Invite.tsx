@@ -84,7 +84,8 @@ export function Invite({ session }: { session: Session }) {
   const skipIntro = alreadyOpened || reducedMotion || forceOpen
 
   const [showEnvelope, setShowEnvelope] = useState(!skipIntro)
-  const [bounceActive, setBounceActive] = useState(skipIntro)
+  // Bounce only after a real envelope open — not on return visits / ?open=1
+  const [bounceActive, setBounceActive] = useState(false)
   const [heroRevealed, setHeroRevealed] = useState(skipIntro)
 
   const onEnvelopeOpened = useCallback(() => {
@@ -180,7 +181,7 @@ export function Invite({ session }: { session: Session }) {
 
         <BounceGuide
           active={bounceActive}
-          reducedMotion={reducedMotion || alreadyOpened || forceOpen}
+          reducedMotion={reducedMotion}
           onIntroDone={onIntroDone}
         />
 
