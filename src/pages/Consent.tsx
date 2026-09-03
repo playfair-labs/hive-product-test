@@ -54,7 +54,7 @@ export function Consent({ session }: { session: Session }) {
           <p className="eyebrow">Optional · day of</p>
           <h2
             style={{
-              fontFamily: 'Fraunces, Georgia, serif',
+              fontFamily: 'Georgia, "Times New Roman", serif',
               color: 'var(--green-deep)',
               margin: '0 0 12px',
               fontSize: 32,
