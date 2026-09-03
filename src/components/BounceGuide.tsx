@@ -4,9 +4,7 @@ import { Pickleball } from './Pickleball'
 type Phase = 'launch' | 'words' | 'scroll' | 'hidden'
 
 type Props = {
-  /** When true, start the bounce sequence */
   active: boolean
-  /** Skip animations */
   reducedMotion: boolean
   wordRefs: RefObject<(HTMLElement | null)[]>
   containerRef: RefObject<HTMLElement | null>
@@ -34,10 +32,12 @@ export function BounceGuide({
   const [phase, setPhase] = useState<Phase>('hidden')
   const [pos, setPos] = useState<Pos>({ x: 0, y: 0 })
   const [visible, setVisible] = useState(false)
-  const [bounceClass, setBounceClass] = useState('')
+  const [spin, setSpin] = useState(0)
+  const [squashed, setSquashed] = useState(false)
+  const [flyClass, setFlyClass] = useState('')
   const doneRef = useRef(false)
+  const spinRef = useRef(0)
 
-  // Start sequence
   useEffect(() => {
     if (!active) return
     const container = containerRef.current
@@ -53,34 +53,62 @@ export function BounceGuide({
 
     setPhase('launch')
     setVisible(true)
-    // Start near top centre (logo / envelope exit)
     const cr = container.getBoundingClientRect()
-    setPos({ x: cr.width / 2, y: 120 })
+    setPos({ x: cr.width / 2, y: 110 })
 
     let cancelled = false
     const words = () => (wordRefs.current || []).filter(Boolean) as HTMLElement[]
 
+    function addSpin(delta: number) {
+      spinRef.current += delta
+      setSpin(spinRef.current)
+    }
+
+    async function hopTo(el: HTMLElement) {
+      const target = centerOf(el, container!)
+      // Rise with spin
+      setFlyClass('is-rising')
+      setSquashed(false)
+      setPos({ x: target.x, y: target.y - 72 })
+      addSpin(140)
+      await wait(260)
+      if (cancelled) return
+      // Fall (faster)
+      setFlyClass('is-falling')
+      addSpin(200)
+      setPos({ x: target.x, y: target.y - 6 })
+      await wait(200)
+      if (cancelled) return
+      // Squash + word hit
+      setFlyClass('is-impact')
+      setSquashed(true)
+      el.classList.add('word-hit')
+      await wait(90)
+      if (cancelled) return
+      // Small rebound
+      setSquashed(false)
+      setFlyClass('is-rising')
+      setPos({ x: target.x, y: target.y - 22 })
+      addSpin(60)
+      await wait(140)
+      if (cancelled) return
+      setFlyClass('is-falling')
+      setPos({ x: target.x, y: target.y - 6 })
+      await wait(160)
+      el.classList.remove('word-hit')
+      setFlyClass('')
+      setSquashed(false)
+    }
+
     async function run() {
-      await wait(280)
+      await wait(200)
       if (cancelled) return
       setPhase('words')
       const list = words()
       for (let i = 0; i < list.length; i++) {
         if (cancelled) return
-        const el = list[i]!
-        const target = centerOf(el, container!)
-        // Arc up then land
-        setBounceClass('is-flying')
-        setPos({ x: target.x, y: target.y - 56 })
-        await wait(220)
-        if (cancelled) return
-        setPos({ x: target.x, y: target.y - 8 })
-        setBounceClass('is-landing')
-        el.classList.add('word-hit')
-        await wait(320)
-        el.classList.remove('word-hit')
-        setBounceClass('')
-        await wait(80)
+        await hopTo(list[i]!)
+        await wait(60)
       }
       if (cancelled) return
       if (!doneRef.current) {
@@ -96,7 +124,6 @@ export function BounceGuide({
     }
   }, [active, reducedMotion, containerRef, wordRefs, onWordBounceDone])
 
-  // Scroll: follow active section heading
   useEffect(() => {
     if (phase !== 'scroll' || !visible) return
     const container = containerRef.current
@@ -113,16 +140,15 @@ export function BounceGuide({
         const best = visibleEntries[0]?.target as HTMLElement | undefined
         if (!best) return
         const next = centerOf(best, container)
+        setFlyClass('is-scroll-hop')
+        setSpin((s) => s + 90)
         setPos({ x: next.x, y: next.y - 6 })
-        setBounceClass('is-scroll-hop')
-        window.setTimeout(() => setBounceClass(''), 400)
+        window.setTimeout(() => setFlyClass(''), 450)
       },
       { root: null, threshold: [0.35, 0.55, 0.75], rootMargin: '-15% 0px -45% 0px' },
     )
 
     targets().forEach((el) => io.observe(el))
-
-    // Initial park on first heading or hero title
     const first = targets()[0]
     if (first) {
       const next = centerOf(first, container)
@@ -134,15 +160,17 @@ export function BounceGuide({
 
   if (!visible) return null
 
+  const size = phase === 'scroll' ? 44 : 58
+
   return (
     <div
-      className={`bounce-ball ${bounceClass}`}
+      className={`bounce-ball ${flyClass}`}
       style={{
         transform: `translate(${pos.x}px, ${pos.y}px) translate(-50%, -50%)`,
       }}
       aria-hidden="true"
     >
-      <Pickleball size={phase === 'scroll' ? 40 : 52} />
+      <Pickleball size={size} spinDeg={spin} squashed={squashed} />
     </div>
   )
 }
