@@ -16,14 +16,10 @@ const RiveIntroBall = lazy(() =>
 
 /**
  * Lightweight intro ball: one bounce + short idle, then fade.
- * Prefer public/pickleball.riv (state machine "Bounce", bool "play").
+ * Prefer public/pickleball.riv (animations "intro" then "idle").
  * Falls back to CSS if the .riv is missing — Rive runtime is code-split.
  *
- * Rive AI prompt for Al:
- * Create a pickleball on a transparent artboard. Add a state machine named Bounce
- * with states: intro (one bounce: fall, squash on impact, rebound with slight spin),
- * then idle (gentle 4px vertical bob loop). Trigger: boolean input play starts intro;
- * when intro finishes go to idle. Keep file tiny — no textures, few shapes.
+ * Regenerate: node scripts/generate-pickleball-riv.mjs
  */
 export function BounceGuide({ active, reducedMotion, onIntroDone }: Props) {
   const [mode, setMode] = useState<Mode>('pending')

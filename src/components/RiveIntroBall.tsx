@@ -1,6 +1,6 @@
-import { useEffect, useRef } from 'react'
-import { useRive, useStateMachineInput } from '@rive-app/react-canvas'
-import { RIV_SRC, RIVE_PLAY_INPUT, RIVE_STATE_MACHINE } from './riveBall'
+import { useEffect, useRef, useState } from 'react'
+import { useRive } from '@rive-app/react-canvas'
+import { RIV_SRC, RIVE_IDLE, RIVE_INTRO } from './riveBall'
 
 type Props = {
   onIntroDone: () => void
@@ -9,9 +9,10 @@ type Props = {
 /** Loaded only when public/pickleball.riv exists (code-split). */
 export function RiveIntroBall({ onIntroDone }: Props) {
   const done = useRef(false)
+  const [gone, setGone] = useState(false)
   const { rive, RiveComponent } = useRive({
     src: RIV_SRC,
-    stateMachine: RIVE_STATE_MACHINE,
+    animations: RIVE_INTRO,
     autoplay: true,
     onLoadError: () => {
       if (!done.current) {
@@ -21,24 +22,24 @@ export function RiveIntroBall({ onIntroDone }: Props) {
     },
   })
 
-  const play = useStateMachineInput(rive, RIVE_STATE_MACHINE, RIVE_PLAY_INPUT)
-
   useEffect(() => {
-    if (!play) return
-    // Rive StateMachineInput is intentionally mutated to drive the machine
-    const input = play as { value: boolean | number }
-    input.value = true
-  }, [play])
-
-  useEffect(() => {
-    const t = window.setTimeout(() => {
+    if (!rive) return
+    rive.play(RIVE_INTRO)
+    const unlock = window.setTimeout(() => {
       if (!done.current) {
         done.current = true
         onIntroDone()
       }
+      rive.play(RIVE_IDLE)
     }, 900)
-    return () => window.clearTimeout(t)
-  }, [onIntroDone])
+    const hide = window.setTimeout(() => setGone(true), 3800)
+    return () => {
+      window.clearTimeout(unlock)
+      window.clearTimeout(hide)
+    }
+  }, [rive, onIntroDone])
+
+  if (gone) return null
 
   return (
     <div className="bounce-ball bounce-ball--rive" aria-hidden="true">
