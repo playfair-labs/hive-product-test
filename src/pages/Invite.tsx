@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { ConfidentialityZipper } from '../components/ConfidentialityZipper'
 import { EVENT, type Session } from '../data/sessions'
 import { submitForm } from '../lib/submit'
 
@@ -54,7 +53,6 @@ export function Invite({ session }: { session: Session }) {
   const guestName = guestNameFromParams(searchParams)
   const hasName = guestName.length > 0
 
-  const [confidential, setConfidential] = useState(false)
   const [rsvpDone, setRsvpDone] = useState(false)
   const [waitDone, setWaitDone] = useState(false)
   const [rsvpBusy, setRsvpBusy] = useState(false)
@@ -73,8 +71,9 @@ export function Invite({ session }: { session: Session }) {
       setRsvpError('This invite needs your personal link from The Hive.')
       return
     }
-    if (!confidential) {
-      setRsvpError('Zip the confidentiality seal closed to agree.')
+    const fd = new FormData(e.currentTarget)
+    if (fd.get('confidential') !== 'on') {
+      setRsvpError('Please agree to keep things private.')
       return
     }
     setRsvpBusy(true)
@@ -248,16 +247,18 @@ export function Invite({ session }: { session: Session }) {
                         {guestName}
                       </div>
                     ) : null}
-                    <ConfidentialityZipper
-                      agreed={confidential}
-                      disabled={!hasName}
-                      onAgreedChange={setConfidential}
-                    />
+                    <label className="check">
+                      <input name="confidential" type="checkbox" required disabled={!hasName} />
+                      <span>
+                        I agree to keep the product confidential and will not take photographs
+                        during the session.
+                      </span>
+                    </label>
                     {rsvpError ? <p className="form-error">{rsvpError}</p> : null}
                     <button
                       className="btn btn-primary btn-block"
                       type="submit"
-                      disabled={rsvpBusy || !hasName || !confidential}
+                      disabled={rsvpBusy || !hasName}
                     >
                       {rsvpBusy ? 'Sending…' : 'Confirm attendance'}
                     </button>
