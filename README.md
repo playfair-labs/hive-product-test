@@ -27,6 +27,8 @@ No public “places left” counter on the invite. After they confirm they see *
 
 Waitlist + film consent live on **On the day**. Until Sat 19 Sep (Brisbane) that page only says “More to come on the day…”. Preview: add `?preview=1`.
 
+Staff **Admin** is a quiet footer link (PIN gated). The player list lives on that phone; RSVPs also email `play@`. Paste names from the inbox if they confirmed on another device.
+
 ### Guest link shape
 
 ```

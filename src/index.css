@@ -510,14 +510,28 @@ label.field {
   text-decoration: none;
 }
 
+.footer-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  margin-top: 12px;
+}
+
 .footer-day {
   display: inline-flex;
-  margin-top: 10px;
   padding: 12px 22px;
   border-radius: 999px;
   background: var(--green-deep);
   color: var(--cream) !important;
   font-size: 16px;
+}
+
+.footer-admin {
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(37, 37, 37, 0.4) !important;
 }
 
 /* Consent page */
@@ -752,6 +766,68 @@ label.field {
   font-size: 13px;
   letter-spacing: 0.04em;
   text-transform: uppercase;
+}
+
+.admin-select {
+  width: 100%;
+  border: 0;
+  background: var(--cream);
+  border-radius: 14px;
+  padding: 16px;
+  font: inherit;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.admin-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.admin-row {
+  display: grid;
+  gap: 10px;
+  padding: 12px 0;
+  border-bottom: 1px solid rgba(47, 107, 40, 0.12);
+}
+
+.admin-row:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
+.admin-row span {
+  display: block;
+  margin-top: 4px;
+  font-size: 14px;
+  font-weight: 600;
+  color: rgba(37, 37, 37, 0.62);
+}
+
+.admin-row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.admin-row-actions button {
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  border: 0;
+  background: var(--cream);
+  color: var(--green-deep);
+  border-radius: 999px;
+  padding: 8px 12px;
+  cursor: pointer;
+}
+
+.louise-toolbar .btn {
+  width: auto;
 }
 
 .ops-wave2 {

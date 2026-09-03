@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'rea
 import { Link, useSearchParams } from 'react-router-dom'
 import { EVENT, SESSION_CAPACITY, type Session } from '../data/sessions'
 import { claimSeat, readLocalRsvp, saveLocalRsvp } from '../lib/attendance'
+import { upsertConfirmed } from '../lib/roster'
 import { submitForm } from '../lib/submit'
 
 function useReveal() {
@@ -100,6 +101,7 @@ export function Invite({ session }: { session: Session }) {
         of: String(SESSION_CAPACITY),
       })
       saveLocalRsvp(session.id, name, seat)
+      upsertConfirmed(name, session.id, seat)
       if (!hasLockedName) setTypedName(name)
       setPlace(seat)
       setRsvpDone(true)
@@ -263,10 +265,14 @@ export function Invite({ session }: { session: Session }) {
 
               <p className="footer-mini">
                 From {EVENT.from}
-                <br />
-                <Link className="footer-day" to={dayTo}>
-                  On the day
-                </Link>
+                <span className="footer-actions">
+                  <Link className="footer-day" to={dayTo}>
+                    On the day
+                  </Link>
+                  <Link className="footer-admin" to="/admin">
+                    Admin
+                  </Link>
+                </span>
               </p>
             </div>
       </div>
