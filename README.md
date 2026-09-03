@@ -2,13 +2,19 @@
 
 Private phone-first invitation for product trial sessions at The Pickleball Hive.
 
-## Guest links (send only their session)
+## Guest links (personalised)
 
-- https://playfair-labs.github.io/hive-product-test/9am
-- https://playfair-labs.github.io/hive-product-test/10am
-- https://playfair-labs.github.io/hive-product-test/11am
+Louise sends **one session + name** per person. Guests only see their time.
 
-Each guest only sees **their** time. Edit times in `src/data/sessions.ts`.
+```
+https://playfair-labs.github.io/hive-product-test/9am?name=Jane%20Smith
+https://playfair-labs.github.io/hive-product-test/10am?name=Jane%20Smith
+https://playfair-labs.github.io/hive-product-test/11am?name=Jane%20Smith
+```
+
+Spaces in names → `%20`. Edit times in `src/data/sessions.ts`.
+
+Without `?name=`, RSVP is disabled (limited spots).
 
 ## Local
 
@@ -16,6 +22,8 @@ Each guest only sees **their** time. Edit times in `src/data/sessions.ts`.
 npm install
 npm run dev
 ```
+
+Open e.g. `http://127.0.0.1:5174/hive-product-test/9am?name=Jane%20Smith`
 
 ## Forms
 

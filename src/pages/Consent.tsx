@@ -1,18 +1,26 @@
 import { useState, type FormEvent } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { EVENT, type Session } from '../data/sessions'
 import { submitForm } from '../lib/submit'
 
 export function Consent({ session }: { session: Session }) {
+  const [searchParams] = useSearchParams()
+  const guestName = (searchParams.get('name') || '').trim()
+  const hasName = guestName.length > 0
+
   const [done, setDone] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+
+  const backTo = hasName
+    ? `/${session.id}?name=${encodeURIComponent(guestName)}`
+    : `/${session.id}`
 
   async function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault()
     setError('')
     const fd = new FormData(e.currentTarget)
-    const name = String(fd.get('name') || '').trim()
+    const name = String(fd.get('name') || guestName || '').trim()
     const film = fd.get('film') === 'on'
     const promo = fd.get('promo') === 'on'
     if (!name || !film) {
@@ -40,11 +48,18 @@ export function Consent({ session }: { session: Session }) {
     <div className="stage">
       <div className="invite">
         <div className="consent-page">
-          <Link className="back-link" to={`/${session.id}`}>
+          <Link className="back-link" to={backTo}>
             ← Back to invitation
           </Link>
           <p className="eyebrow">Optional · day of</p>
-          <h2 style={{ fontFamily: 'Fraunces, Georgia, serif', color: 'var(--green-deep)', margin: '0 0 12px' }}>
+          <h2
+            style={{
+              fontFamily: 'Fraunces, Georgia, serif',
+              color: 'var(--green-deep)',
+              margin: '0 0 12px',
+              fontSize: 32,
+            }}
+          >
             A quick chat on camera?
           </h2>
           <p>
@@ -68,7 +83,15 @@ export function Consent({ session }: { session: Session }) {
             <form className="form" onSubmit={onSubmit}>
               <label className="field">
                 Full name
-                <input name="name" type="text" autoComplete="name" required placeholder="Your full name" />
+                <input
+                  name="name"
+                  type="text"
+                  autoComplete="name"
+                  required
+                  defaultValue={guestName}
+                  readOnly={hasName}
+                  placeholder="Your full name"
+                />
               </label>
               <label className="check">
                 <input name="film" type="checkbox" required />

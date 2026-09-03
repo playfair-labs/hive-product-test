@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { EVENT, type Session } from '../data/sessions'
 import { submitForm } from '../lib/submit'
 
@@ -29,7 +29,7 @@ function Section({
   children,
   id,
 }: {
-  eyebrow: string
+  eyebrow?: string
   title: string
   children: ReactNode
   id?: string
@@ -37,14 +37,22 @@ function Section({
   const ref = useReveal()
   return (
     <section className="section" ref={ref} id={id}>
-      <p className="eyebrow">{eyebrow}</p>
+      {eyebrow ? <p className="eyebrow">{eyebrow}</p> : null}
       <h2>{title}</h2>
       {children}
     </section>
   )
 }
 
+function guestNameFromParams(params: URLSearchParams): string {
+  return (params.get('name') || '').trim()
+}
+
 export function Invite({ session }: { session: Session }) {
+  const [searchParams] = useSearchParams()
+  const guestName = guestNameFromParams(searchParams)
+  const hasName = guestName.length > 0
+
   const [rsvpDone, setRsvpDone] = useState(false)
   const [waitDone, setWaitDone] = useState(false)
   const [rsvpBusy, setRsvpBusy] = useState(false)
@@ -52,20 +60,27 @@ export function Invite({ session }: { session: Session }) {
   const [rsvpError, setRsvpError] = useState('')
   const [waitError, setWaitError] = useState('')
 
+  const consentTo = hasName
+    ? `/${session.id}/consent?name=${encodeURIComponent(guestName)}`
+    : `/${session.id}/consent`
+
   async function onRsvp(e: FormEvent<HTMLFormElement>) {
     e.preventDefault()
     setRsvpError('')
+    if (!hasName) {
+      setRsvpError('This invite needs your personal link from The Hive.')
+      return
+    }
     const fd = new FormData(e.currentTarget)
-    const name = String(fd.get('name') || '').trim()
     const confidential = fd.get('confidential') === 'on'
-    if (!name || !confidential) {
-      setRsvpError('Please add your name and agree to keep things private.')
+    if (!confidential) {
+      setRsvpError('Please agree to keep things private.')
       return
     }
     setRsvpBusy(true)
     try {
       await submitForm('rsvp', {
-        name,
+        name: guestName,
         session: session.id,
         time: session.timeLabel,
         confidentiality: 'yes',
@@ -83,7 +98,7 @@ export function Invite({ session }: { session: Session }) {
     e.preventDefault()
     setWaitError('')
     const fd = new FormData(e.currentTarget)
-    const name = String(fd.get('name') || '').trim()
+    const name = String(fd.get('name') || guestName || '').trim()
     const email = String(fd.get('email') || '').trim()
     const phone = String(fd.get('phone') || '').trim()
     const interested = fd.get('interested') === 'on'
@@ -124,6 +139,7 @@ export function Invite({ session }: { session: Session }) {
             <p className="seal-label">Private invitation</p>
           </div>
           <div className="hero-copy">
+            {hasName ? <p className="hero-hi">Hi, {guestName}</p> : null}
             <p className="brand">{EVENT.name}</p>
             <h1>You’ve been selected</h1>
             <p className="hero-sub">
@@ -133,10 +149,10 @@ export function Invite({ session }: { session: Session }) {
         </header>
 
         <div className="sheet">
-          <Section eyebrow="With our thanks" title="You’re one of a small group">
+          <Section title="You’re one of a small group">
             <p>
-              Thank you. You’ve been invited to come along and test a new product soon to hit the
-              market — developed to enhance your game and make it easier to try new shots.
+              You’ve been invited to come along and test a new product soon to hit the market —
+              developed to enhance your game and make it easier to try new shots.
             </p>
             <p>
               You’ll also get to try an exciting new scoring system that has proven to enhance
@@ -204,31 +220,43 @@ export function Invite({ session }: { session: Session }) {
             </div>
           </Section>
 
-          <Section eyebrow="Please confirm" title="We would be honoured if you could join us" id="rsvp">
+          <Section title="We’d love you to join us." id="rsvp">
             <p className="form-note">RSVP by {EVENT.rsvpDeadline}.</p>
+            {!hasName ? (
+              <p className="form-error">
+                This invite needs your personal link from The Hive. Please use the link you were
+                sent.
+              </p>
+            ) : null}
             {rsvpDone ? (
               <div className="success">
                 <h3>You’re in</h3>
                 <p>
-                  See you {EVENT.dateShort} at {session.timeLabel}. Keep this link — you may need it
-                  on the day.
+                  See you {EVENT.dateShort} at {session.timeLabel}
+                  {hasName ? `, ${guestName}` : ''}. Keep this link — you may need it on the day.
                 </p>
               </div>
             ) : (
               <form className="form" onSubmit={onRsvp}>
-                <label className="field">
-                  Full name
-                  <input name="name" type="text" autoComplete="name" required placeholder="Your full name" />
-                </label>
+                {hasName ? (
+                  <div className="name-locked">
+                    <span>Confirming for</span>
+                    {guestName}
+                  </div>
+                ) : null}
                 <label className="check">
-                  <input name="confidential" type="checkbox" required />
+                  <input name="confidential" type="checkbox" required disabled={!hasName} />
                   <span>
                     I agree to keep the product confidential and will not take photographs during
                     the session.
                   </span>
                 </label>
                 {rsvpError ? <p className="form-error">{rsvpError}</p> : null}
-                <button className="btn btn-primary btn-block" type="submit" disabled={rsvpBusy}>
+                <button
+                  className="btn btn-primary btn-block"
+                  type="submit"
+                  disabled={rsvpBusy || !hasName}
+                >
                   {rsvpBusy ? 'Sending…' : 'Confirm attendance'}
                 </button>
               </form>
@@ -249,7 +277,15 @@ export function Invite({ session }: { session: Session }) {
               <form className="form" onSubmit={onWaitlist}>
                 <label className="field">
                   Full name
-                  <input name="name" type="text" autoComplete="name" required placeholder="Your full name" />
+                  <input
+                    name="name"
+                    type="text"
+                    autoComplete="name"
+                    required
+                    defaultValue={guestName}
+                    readOnly={hasName}
+                    placeholder="Your full name"
+                  />
                 </label>
                 <label className="field">
                   Email
@@ -277,7 +313,7 @@ export function Invite({ session }: { session: Session }) {
           <p className="footer-mini">
             From {EVENT.from}
             <br />
-            <Link to={`/${session.id}/consent`}>Day-of film consent</Link>
+            <Link to={consentTo}>Day-of film consent</Link>
             {' · '}
             optional, no pressure
           </p>
