@@ -142,7 +142,6 @@ export function Day({ session }: { session: Session }) {
 
               <hr className="day-rule" />
 
-              <p className="eyebrow">On the day · or anytime</p>
               <h2 className="day-heading">Want to be among the first?</h2>
               <p>
                 If you love what you try and want to be among the first to get one when it arrives,
