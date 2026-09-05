@@ -147,7 +147,7 @@ export function Day({ session }: { session: Session }) {
               <h2 className="day-heading">Want to be among the first?</h2>
               <p>
                 If you love what you try and want to be among the first to get one when it arrives,
-                leave your details here. Same invitation — no rush.
+                leave your details here.
               </p>
 
               {waitDone ? (
