@@ -40,7 +40,6 @@ export function Admin() {
     <div className="stage">
       <div className="invite louise">
         <div className="louise-page ops-page">
-          <p className="eyebrow">Louise &amp; Alan · who’s coming</p>
           <h1 className="louise-title">Admin</h1>
 
           {flash ? <p className="ops-flash">{flash}</p> : null}
