@@ -27,7 +27,7 @@ export type OpsState = {
 }
 
 export const LEVEL_TO_SESSION: Record<Level, SessionId> = {
-  beginner: 'sat-9am',
+  beginner: 'sat-7am',
   intermediate: 'sat-6pm',
   advanced: 'sun-7am',
 }
@@ -57,8 +57,12 @@ export function parseLevel(raw: string): Level | null {
   if (
     s.startsWith('beg') ||
     s === 'b' ||
+    s === '7' ||
+    s === '7am' ||
     s === '9' ||
     s === '9am' ||
+    s === 'sat-7am' ||
+    s === 'sat7am' ||
     s === 'sat-9am' ||
     s === 'sat9am'
   ) {
@@ -159,7 +163,7 @@ export function countBySession(
   status: GuestStatus | GuestStatus[] = ['confirmed'],
 ): Record<SessionId, number> {
   const want = new Set(Array.isArray(status) ? status : [status])
-  const counts: Record<SessionId, number> = { 'sat-9am': 0, 'sat-6pm': 0, 'sun-7am': 0 }
+  const counts: Record<SessionId, number> = { 'sat-7am': 0, 'sat-6pm': 0, 'sun-7am': 0 }
   for (const g of guests) {
     if (want.has(g.status)) counts[g.sessionId] += 1
   }

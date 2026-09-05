@@ -1,4 +1,4 @@
-export type SessionId = 'sat-9am' | 'sat-6pm' | 'sun-7am'
+export type SessionId = 'sat-7am' | 'sat-6pm' | 'sun-7am'
 
 export type SessionLevel = 'beginner' | 'intermediate' | 'advanced'
 
@@ -19,17 +19,17 @@ export type Session = {
 
 /** Edit times here — guests never see other sessions */
 export const SESSIONS: Record<SessionId, Session> = {
-  'sat-9am': {
-    id: 'sat-9am',
+  'sat-7am': {
+    id: 'sat-7am',
     dateLabel: 'Saturday 19 September 2026',
     dateShort: 'Sat 19 Sep',
     isoDate: '2026-09-19',
-    timeLabel: '9:00 am',
-    timeEndLabel: '11:00 am',
-    timeShort: '9am',
+    timeLabel: '7:00 am',
+    timeEndLabel: '9:00 am',
+    timeShort: '7am',
     duration: '2 hours',
     level: 'beginner',
-    staffLabel: 'Sat 9–11am · Beginners',
+    staffLabel: 'Sat 7–9am · Beginners',
   },
   'sat-6pm': {
     id: 'sat-6pm',
@@ -59,7 +59,8 @@ export const SESSIONS: Record<SessionId, Session> = {
 
 /** Old invite paths → current session ids */
 export const SESSION_REDIRECTS: Record<string, SessionId> = {
-  '9am': 'sat-9am',
+  '9am': 'sat-7am',
+  'sat-9am': 'sat-7am',
   '10am': 'sat-6pm',
   '11am': 'sun-7am',
 }

@@ -66,11 +66,11 @@ export default function App() {
         }
       />
       <Route path="/louise" element={<Louise />} />
-      <Route path="/" element={<Navigate to="/sat-9am" replace />} />
+      <Route path="/" element={<Navigate to="/sat-7am" replace />} />
       <Route path="/:sessionId" element={<SessionInvite />} />
       <Route path="/:sessionId/day" element={<SessionDay />} />
       <Route path="/:sessionId/consent" element={<ConsentToDay />} />
-      <Route path="*" element={<Navigate to="/sat-9am" replace />} />
+      <Route path="*" element={<Navigate to="/sat-7am" replace />} />
     </Routes>
   )
 }

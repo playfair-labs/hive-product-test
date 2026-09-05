@@ -17,7 +17,7 @@ Al does everything else in the **Operator Console** (not linked from guest invit
 
 ### Operator flow
 
-1. Paste Wave 1 list → import (levels map to sat-9am beginners / sat-6pm intermediate / sun-7am advanced).
+1. Paste Wave 1 list → import (levels map to sat-7am beginners / sat-6pm intermediate / sun-7am advanced).
 2. Optional: paste bench list.
 3. **Download mail-merge CSV** and send from `play@thepickleballhive.au` (Gmail / YAMM), **or** tap **Email** per person (mailto opens as whoever is logged into Mail — use the Hive account).
 4. Watch RSVPs in `play@` → mark **confirmed** on the status board (or **Sync from RSVP log** if you opened the invite in this same browser).
@@ -32,7 +32,7 @@ Staff **Admin** is a quiet footer link (PIN gated). The player list lives on tha
 ### Guest link shape
 
 ```
-https://playfair-labs.github.io/hive-product-test/sat-9am?name=Jane%20Smith
+https://playfair-labs.github.io/hive-product-test/sat-7am?name=Jane%20Smith
 ```
 
 Personal links lock the name. Without `?name=`, guests type their name. Edit times in `src/data/sessions.ts`.
@@ -41,11 +41,11 @@ Sessions (guests never see levels or other groups):
 
 | Link | When | Level (staff only) |
 |------|------|--------------------|
-| `/sat-9am` | Sat 19 Sep · 9:00 am – 11:00 am | Beginners |
+| `/sat-7am` | Sat 19 Sep · 7:00 am – 9:00 am | Beginners |
 | `/sat-6pm` | Sat 19 Sep · 6:00 pm – 8:00 pm | Intermediate |
 | `/sun-7am` | Sun 20 Sep · 7:00 am – 9:00 am | Advanced |
 
-Old `/9am` `/10am` `/11am` links redirect.
+Old `/sat-9am` `/9am` `/10am` `/11am` links redirect.
 
 ### Optional live RSVP webhook
 
@@ -59,7 +59,7 @@ npm run dev
 ```
 
 - Ops: `http://127.0.0.1:5174/hive-product-test/ops`
-- Guest: `http://127.0.0.1:5174/hive-product-test/sat-9am?name=Jane%20Smith`
+- Guest: `http://127.0.0.1:5174/hive-product-test/sat-7am?name=Jane%20Smith`
 
 ## Forms
 

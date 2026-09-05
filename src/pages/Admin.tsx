@@ -39,7 +39,7 @@ export function Admin() {
   const [filter, setFilter] = useState<SessionId | 'all'>('all')
   const [addName, setAddName] = useState('')
   const [addEmail, setAddEmail] = useState('')
-  const [addSession, setAddSession] = useState<SessionId>('sat-9am')
+  const [addSession, setAddSession] = useState<SessionId>('sat-7am')
   const [paste, setPaste] = useState('')
 
   const replacements = needsReplacement(guests)
@@ -140,7 +140,7 @@ export function Admin() {
     const n = importRosterLines(paste)
     setPaste('')
     refresh()
-    say(n ? `Imported ${n}` : 'Nothing to import — Name, Email, sat-9am')
+    say(n ? `Imported ${n}` : 'Nothing to import — Name, Email, sat-7am')
   }
 
   return (
@@ -406,14 +406,14 @@ export function Admin() {
 
           <section className="ops-card" style={{ marginTop: 12 }}>
             <h2>Paste from play@ or another phone</h2>
-            <p className="form-note">One per line: Name, Email, sat-9am (or sat-6pm / sun-7am)</p>
+            <p className="form-note">One per line: Name, Email, sat-7am (or sat-6pm / sun-7am)</p>
             <form className="form" onSubmit={onImport}>
               <textarea
                 className="louise-textarea"
                 rows={4}
                 value={paste}
                 onChange={(e) => setPaste(e.target.value)}
-                placeholder={'Jane Smith, jane@email.com, sat-9am'}
+                placeholder={'Jane Smith, jane@email.com, sat-7am'}
               />
               <button className="btn btn-dark btn-block" type="submit">
                 Import into this list

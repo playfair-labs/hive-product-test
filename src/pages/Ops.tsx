@@ -152,7 +152,7 @@ export function Ops() {
   }
 
   const confirmedCounts = {
-    'sat-9am': state.guests.filter((g) => g.sessionId === 'sat-9am' && g.status === 'confirmed').length,
+    'sat-7am': state.guests.filter((g) => g.sessionId === 'sat-7am' && g.status === 'confirmed').length,
     'sat-6pm': state.guests.filter((g) => g.sessionId === 'sat-6pm' && g.status === 'confirmed').length,
     'sun-7am': state.guests.filter((g) => g.sessionId === 'sun-7am' && g.status === 'confirmed').length,
   }
