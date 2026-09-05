@@ -1,5 +1,5 @@
 import type { SessionId } from '../data/sessions'
-import { SESSION_CAPACITY } from '../data/sessions'
+import { SESSION_CAPACITY, isSessionId, resolveSessionId } from '../data/sessions'
 import { readRsvpLog } from './opsNotify'
 
 const KEY = 'hive-roster-v1'
@@ -151,8 +151,8 @@ export function hydrateFromRsvpLog(): number {
   for (const entry of readRsvpLog()) {
     if (entry.type !== 'rsvp') continue
     const name = entry.name.trim()
-    const sessionId = entry.session as SessionId
-    if (!name || (sessionId !== '9am' && sessionId !== '10am' && sessionId !== '11am')) continue
+    const sessionId = resolveSessionId(entry.session)
+    if (!name || !sessionId) continue
     if (removed.has(`${sessionId}:${slug(name)}`)) continue
     if (next.some((g) => samePerson(g, name, sessionId) && g.status !== 'removed')) continue
     const placeRaw = Number(entry.payload.place)
@@ -191,15 +191,14 @@ export function importRosterLines(raw: string): number {
     if (!name) continue
     let email = ''
     let sessionId: SessionId | null = null
-    if (emailOrSession === '9am' || emailOrSession === '10am' || emailOrSession === '11am') {
-      sessionId = emailOrSession
+    const asSession = resolveSessionId(emailOrSession || '')
+    if (asSession) {
+      sessionId = asSession
     } else {
       email = emailOrSession || ''
-      if (sessionOrStatus === '9am' || sessionOrStatus === '10am' || sessionOrStatus === '11am') {
-        sessionId = sessionOrStatus
-      }
+      sessionId = resolveSessionId(sessionOrStatus || '')
     }
-    if (!sessionId) continue
+    if (!sessionId || !isSessionId(sessionId)) continue
     const status = parts.find((p) => p === 'invited' || p === 'confirmed')
     if (status === 'invited') addInvited(name, email, sessionId)
     else {

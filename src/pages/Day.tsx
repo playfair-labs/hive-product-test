@@ -7,7 +7,7 @@ export function Day({ session }: { session: Session }) {
   const [searchParams] = useSearchParams()
   const guestName = (searchParams.get('name') || '').trim()
   const hasName = guestName.length > 0
-  const open = isDayPageOpen(searchParams)
+  const open = isDayPageOpen(searchParams, session)
 
   const [waitDone, setWaitDone] = useState(false)
   const [waitBusy, setWaitBusy] = useState(false)
@@ -161,7 +161,7 @@ export function Day({ session }: { session: Session }) {
                 {EVENT.name}. We’d only do that with your say-so below.
               </p>
               <p className="form-note" style={{ marginBottom: 16 }}>
-                Your session: {EVENT.dateShort} · {session.timeLabel}
+                Your session: {session.dateShort} · {session.timeLabel} · {session.timeEndLabel}
               </p>
 
               {consentDone ? (

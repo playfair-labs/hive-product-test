@@ -1,6 +1,6 @@
 import { Navigate, Route, Routes, useParams, useSearchParams } from 'react-router-dom'
 import { AdminGate } from './components/AdminGate'
-import { getSession } from './data/sessions'
+import { getSession, resolveSessionId } from './data/sessions'
 import { Invite } from './pages/Invite'
 import { Day } from './pages/Day'
 import { Louise } from './pages/Louise'
@@ -9,7 +9,11 @@ import { Admin } from './pages/Admin'
 
 function SessionInvite() {
   const { sessionId } = useParams()
-  const session = getSession(sessionId)
+  const resolved = resolveSessionId(sessionId)
+  if (resolved && sessionId !== resolved) {
+    return <Navigate to={`/${resolved}`} replace />
+  }
+  const session = getSession(resolved ?? undefined)
   if (!session) {
     return (
       <div className="missing">
@@ -23,7 +27,13 @@ function SessionInvite() {
 
 function SessionDay() {
   const { sessionId } = useParams()
-  const session = getSession(sessionId)
+  const [params] = useSearchParams()
+  const resolved = resolveSessionId(sessionId)
+  if (resolved && sessionId !== resolved) {
+    const q = params.toString()
+    return <Navigate to={q ? `/${resolved}/day?${q}` : `/${resolved}/day`} replace />
+  }
+  const session = getSession(resolved ?? undefined)
   if (!session) return <Navigate to="/" replace />
   return <Day session={session} />
 }
@@ -31,8 +41,9 @@ function SessionDay() {
 function ConsentToDay() {
   const { sessionId } = useParams()
   const [params] = useSearchParams()
+  const resolved = resolveSessionId(sessionId) ?? sessionId
   const q = params.toString()
-  return <Navigate to={q ? `/${sessionId}/day?${q}` : `/${sessionId}/day`} replace />
+  return <Navigate to={q ? `/${resolved}/day?${q}` : `/${resolved}/day`} replace />
 }
 
 export default function App() {
@@ -55,11 +66,11 @@ export default function App() {
         }
       />
       <Route path="/louise" element={<Louise />} />
-      <Route path="/" element={<Navigate to="/9am" replace />} />
+      <Route path="/" element={<Navigate to="/sat-9am" replace />} />
       <Route path="/:sessionId" element={<SessionInvite />} />
       <Route path="/:sessionId/day" element={<SessionDay />} />
       <Route path="/:sessionId/consent" element={<ConsentToDay />} />
-      <Route path="*" element={<Navigate to="/9am" replace />} />
+      <Route path="*" element={<Navigate to="/sat-9am" replace />} />
     </Routes>
   )
 }

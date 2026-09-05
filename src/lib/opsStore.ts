@@ -27,9 +27,9 @@ export type OpsState = {
 }
 
 export const LEVEL_TO_SESSION: Record<Level, SessionId> = {
-  beginner: '9am',
-  intermediate: '10am',
-  advanced: '11am',
+  beginner: 'sat-9am',
+  intermediate: 'sat-6pm',
+  advanced: 'sun-7am',
 }
 
 export const PUBLIC_BASE = 'https://playfair-labs.github.io/hive-product-test'
@@ -40,16 +40,52 @@ export function inviteUrl(sessionId: SessionId, name: string): string {
   return `${PUBLIC_BASE}/${sessionId}?name=${encodeURIComponent(name)}`
 }
 
+/** Guest-facing time window (no level) */
 export function sessionLabel(sessionId: SessionId): string {
-  return SESSIONS[sessionId].timeLabel
+  const s = SESSIONS[sessionId]
+  return `${s.timeLabel} · ${s.timeEndLabel}`
+}
+
+/** Staff-facing label including level */
+export function staffSessionLabel(sessionId: SessionId): string {
+  return SESSIONS[sessionId].staffLabel
 }
 
 export function parseLevel(raw: string): Level | null {
   const s = raw.trim().toLowerCase()
   if (!s) return null
-  if (s.startsWith('beg') || s === 'b' || s === '9' || s === '9am') return 'beginner'
-  if (s.startsWith('int') || s === 'i' || s === '10' || s === '10am') return 'intermediate'
-  if (s.startsWith('adv') || s === 'a' || s === '11' || s === '11am') return 'advanced'
+  if (
+    s.startsWith('beg') ||
+    s === 'b' ||
+    s === '9' ||
+    s === '9am' ||
+    s === 'sat-9am' ||
+    s === 'sat9am'
+  ) {
+    return 'beginner'
+  }
+  if (
+    s.startsWith('int') ||
+    s === 'i' ||
+    s === '10' ||
+    s === '10am' ||
+    s === '6pm' ||
+    s === 'sat-6pm' ||
+    s === 'sat6pm'
+  ) {
+    return 'intermediate'
+  }
+  if (
+    s.startsWith('adv') ||
+    s === 'a' ||
+    s === '11' ||
+    s === '11am' ||
+    s === '7am' ||
+    s === 'sun-7am' ||
+    s === 'sun7am'
+  ) {
+    return 'advanced'
+  }
   return null
 }
 
@@ -123,7 +159,7 @@ export function countBySession(
   status: GuestStatus | GuestStatus[] = ['confirmed'],
 ): Record<SessionId, number> {
   const want = new Set(Array.isArray(status) ? status : [status])
-  const counts: Record<SessionId, number> = { '9am': 0, '10am': 0, '11am': 0 }
+  const counts: Record<SessionId, number> = { 'sat-9am': 0, 'sat-6pm': 0, 'sun-7am': 0 }
   for (const g of guests) {
     if (want.has(g.status)) counts[g.sessionId] += 1
   }

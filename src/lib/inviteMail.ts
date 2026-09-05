@@ -1,4 +1,4 @@
-import { EVENT } from '../data/sessions'
+import { EVENT, SESSIONS } from '../data/sessions'
 import { inviteUrl, sessionLabel, type Guest } from './opsStore'
 
 export function emailSubject(): string {
@@ -7,6 +7,7 @@ export function emailSubject(): string {
 
 export function emailBody(guest: Guest): string {
   const link = inviteUrl(guest.sessionId, guest.name)
+  const session = SESSIONS[guest.sessionId]
   const time = sessionLabel(guest.sessionId)
   return [
     `Hi ${guest.name.split(' ')[0]},`,
@@ -16,8 +17,8 @@ export function emailBody(guest: Guest): string {
     `Open your personal invitation here (please don’t forward this link):`,
     link,
     ``,
-    `${EVENT.dateLabel}`,
-    `${time} · 2 hours`,
+    `${session.dateLabel}`,
+    `${time}`,
     `${EVENT.venue}`,
     `${EVENT.address}`,
     ``,

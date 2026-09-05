@@ -15,14 +15,14 @@ import {
   upsertConfirmed,
   type RosterGuest,
 } from '../lib/roster'
-import { inviteUrl, sessionLabel, type Guest } from '../lib/opsStore'
+import { inviteUrl, staffSessionLabel, type Guest } from '../lib/opsStore'
 
 function asGuest(row: RosterGuest): Guest {
   return {
     id: row.id,
     name: row.name,
     email: row.email,
-    level: row.sessionId === '9am' ? 'beginner' : row.sessionId === '10am' ? 'intermediate' : 'advanced',
+    level: row.sessionId === 'sat-9am' ? 'beginner' : row.sessionId === 'sat-6pm' ? 'intermediate' : 'advanced',
     sessionId: row.sessionId,
     kind: 'wave1',
     status: row.status === 'confirmed' ? 'confirmed' : 'sent',
@@ -36,7 +36,7 @@ export function Admin() {
   const [filter, setFilter] = useState<SessionId | 'all'>('all')
   const [addName, setAddName] = useState('')
   const [addEmail, setAddEmail] = useState('')
-  const [addSession, setAddSession] = useState<SessionId>('9am')
+  const [addSession, setAddSession] = useState<SessionId>('sat-9am')
   const [paste, setPaste] = useState('')
 
   function refresh() {
@@ -119,7 +119,7 @@ export function Admin() {
     const n = importRosterLines(paste)
     setPaste('')
     refresh()
-    say(n ? `Imported ${n}` : 'Nothing to import — Name, Email, 9am')
+    say(n ? `Imported ${n}` : 'Nothing to import — Name, Email, sat-9am')
   }
 
   return (
@@ -138,7 +138,7 @@ export function Admin() {
           <div className="ops-capacity">
             {(Object.keys(SESSIONS) as SessionId[]).map((id) => (
               <div key={id} className="ops-cap-pill">
-                <strong>{sessionLabel(id)}</strong>
+                <strong>{staffSessionLabel(id)}</strong>
                 <span>
                   {activeConfirmed(guests, id)}/{SESSION_CAPACITY}
                 </span>
@@ -193,7 +193,7 @@ export function Admin() {
                 >
                   {(Object.keys(SESSIONS) as SessionId[]).map((id) => (
                     <option key={id} value={id}>
-                      {sessionLabel(id)}
+                      {staffSessionLabel(id)}
                     </option>
                   ))}
                 </select>
@@ -215,7 +215,7 @@ export function Admin() {
                 className={filter === id ? 'btn btn-primary' : 'btn btn-dark'}
                 onClick={() => setFilter(id)}
               >
-                {sessionLabel(id)}
+                {staffSessionLabel(id)}
               </button>
             ))}
             <button
@@ -238,7 +238,7 @@ export function Admin() {
                     <div>
                       <strong>{g.name}</strong>
                       <span>
-                        {sessionLabel(g.sessionId)}
+                        {staffSessionLabel(g.sessionId)}
                         {g.place ? ` · ${g.place} of ${SESSION_CAPACITY}` : ''}
                         {g.status === 'invited' ? ' · invited' : ' · in'}
                         {g.email ? ` · ${g.email}` : ''}
@@ -274,7 +274,7 @@ export function Admin() {
                     <li key={g.id} className="admin-row">
                       <div>
                         <strong>{g.name}</strong>
-                        <span>{sessionLabel(g.sessionId)} · out</span>
+                        <span>{staffSessionLabel(g.sessionId)} · out</span>
                       </div>
                       <div className="admin-row-actions">
                         <button
@@ -296,14 +296,14 @@ export function Admin() {
 
           <section className="ops-card" style={{ marginTop: 12 }}>
             <h2>Paste from play@ or another phone</h2>
-            <p className="form-note">One per line: Name, Email, 9am (or 10am / 11am)</p>
+            <p className="form-note">One per line: Name, Email, sat-9am (or sat-6pm / sun-7am)</p>
             <form className="form" onSubmit={onImport}>
               <textarea
                 className="louise-textarea"
                 rows={4}
                 value={paste}
                 onChange={(e) => setPaste(e.target.value)}
-                placeholder={'Jane Smith, jane@email.com, 9am'}
+                placeholder={'Jane Smith, jane@email.com, sat-9am'}
               />
               <button className="btn btn-dark btn-block" type="submit">
                 Import into this list

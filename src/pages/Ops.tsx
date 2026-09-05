@@ -15,7 +15,7 @@ import {
   mergeGuests,
   parseGuestLines,
   saveOps,
-  sessionLabel,
+  staffSessionLabel,
   wave2Needs,
   type Guest,
   type GuestStatus,
@@ -111,7 +111,7 @@ export function Ops() {
       ids.has(g.id) ? { ...g, kind: 'wave1' as const, status: 'draft' as const } : g,
     )
     setState({ ...state, guests })
-    flashMsg(`Moved ${take.length} from bench → Wave 1 (${sessionLabel(sessionId)})`)
+    flashMsg(`Moved ${take.length} from bench → Wave 1 (${staffSessionLabel(sessionId)})`)
   }
 
   function syncFromRsvpLog() {
@@ -152,9 +152,9 @@ export function Ops() {
   }
 
   const confirmedCounts = {
-    '9am': state.guests.filter((g) => g.sessionId === '9am' && g.status === 'confirmed').length,
-    '10am': state.guests.filter((g) => g.sessionId === '10am' && g.status === 'confirmed').length,
-    '11am': state.guests.filter((g) => g.sessionId === '11am' && g.status === 'confirmed').length,
+    'sat-9am': state.guests.filter((g) => g.sessionId === 'sat-9am' && g.status === 'confirmed').length,
+    'sat-6pm': state.guests.filter((g) => g.sessionId === 'sat-6pm' && g.status === 'confirmed').length,
+    'sun-7am': state.guests.filter((g) => g.sessionId === 'sun-7am' && g.status === 'confirmed').length,
   }
 
   return (
@@ -245,7 +245,7 @@ export function Ops() {
             <div className="ops-capacity">
               {(Object.keys(SESSIONS) as SessionId[]).map((id) => (
                 <div key={id} className="ops-cap-pill">
-                  <strong>{sessionLabel(id)}</strong>
+                  <strong>{staffSessionLabel(id)}</strong>
                   <span>
                     {confirmedCounts[id]}/{SESSION_CAPACITY} confirmed
                   </span>
@@ -259,7 +259,7 @@ export function Ops() {
                 <ul>
                   {needs.map((n) => (
                     <li key={n.sessionId}>
-                      {sessionLabel(n.sessionId)} — need {n.need} more
+                      {staffSessionLabel(n.sessionId)} — need {n.need} more
                       <button
                         type="button"
                         className="btn btn-dark louise-copy"
@@ -287,7 +287,7 @@ export function Ops() {
                   <option value="all">All sessions</option>
                   {(Object.keys(SESSIONS) as SessionId[]).map((id) => (
                     <option key={id} value={id}>
-                      {sessionLabel(id)}
+                      {staffSessionLabel(id)}
                     </option>
                   ))}
                 </select>
@@ -323,7 +323,7 @@ export function Ops() {
                             invite link
                           </a>
                         </td>
-                        <td>{sessionLabel(g.sessionId)}</td>
+                        <td>{staffSessionLabel(g.sessionId)}</td>
                         <td>{g.kind}</td>
                         <td>
                           <select
