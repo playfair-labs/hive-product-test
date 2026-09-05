@@ -1,4 +1,7 @@
-/** Full feature snapshot: src/preserved/Admin.full.tsx (and README there). */
+/**
+ * ARCHIVED — full Admin feature set. Not routed.
+ * See src/preserved/README.md. Restore by copying over the live path.
+ */
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { SESSION_CAPACITY, SESSIONS, type SessionId } from '../data/sessions'
