@@ -1,4 +1,4 @@
-const PIN = '6497'
+const PIN = '0503'
 const KEY = 'hive-admin-ok'
 
 export function isAdminUnlocked(): boolean {
