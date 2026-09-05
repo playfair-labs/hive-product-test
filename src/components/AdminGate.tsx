@@ -1,4 +1,5 @@
 import { useState, type FormEvent, type ReactNode } from 'react'
+import { Link } from 'react-router-dom'
 import { isAdminUnlocked, unlockAdmin } from '../lib/adminAuth'
 
 export function AdminGate({ children }: { children: ReactNode }) {
@@ -22,6 +23,9 @@ export function AdminGate({ children }: { children: ReactNode }) {
     <div className="stage">
       <div className="invite louise">
         <div className="louise-page">
+          <Link className="back-link" to="/sat-7am">
+            ← Back to invitation
+          </Link>
           <p className="eyebrow">Staff only</p>
           <h1 className="louise-title">Admin</h1>
           <p className="louise-lead">Enter the staff PIN to manage the list and send invites.</p>

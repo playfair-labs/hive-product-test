@@ -549,11 +549,14 @@ It's a great opportunity that will book out fast. Andy and I love it, and it's f
               <Link className="footer-day" to={dayTo}>
                 On the day
               </Link>
-              <Link className="footer-admin" to="/admin">
-                Admin
-              </Link>
             </span>
           </p>
+          <Link
+            className="admin-secret"
+            to="/admin"
+            aria-label="Staff"
+            title=""
+          />
         </div>
       </div>
     </div>

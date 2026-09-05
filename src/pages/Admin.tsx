@@ -7,6 +7,7 @@ import {
   type FormEvent,
   type PointerEvent as ReactPointerEvent,
 } from 'react'
+import { Link } from 'react-router-dom'
 import { SESSION_CAPACITY, SESSIONS, type SessionId } from '../data/sessions'
 import { releaseSeat } from '../lib/attendance'
 import {
@@ -208,6 +209,9 @@ export function Admin() {
     <div className="stage">
       <div className="invite louise">
         <div className="louise-page ops-page">
+          <Link className="back-link" to="/sat-7am">
+            ← Back to invitation
+          </Link>
           <h1 className="louise-title">Admin</h1>
 
           {flash ? <p className="ops-flash">{flash}</p> : null}
