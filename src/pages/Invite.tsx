@@ -85,6 +85,7 @@ export function Invite({ session }: { session: Session }) {
   const [rsvpError, setRsvpError] = useState('')
   const [taken, setTaken] = useState<number | null>(null)
   const [cancelBusy, setCancelBusy] = useState(false)
+  const [declined, setDeclined] = useState(false)
 
   const guestName = hasLockedName ? lockedName : typedName.trim()
   const dayTo = guestName
@@ -185,29 +186,42 @@ export function Invite({ session }: { session: Session }) {
   }
 
   async function onCantCome() {
-    const name = guestName
+    const name = (hasLockedName ? lockedName : typedName).trim() || guestName
     if (!name) {
-      setRsvpError('Add your name first.')
+      setRsvpError('Add your name first so we know who to replace.')
       return
     }
-    if (!window.confirm('Thanks — we’ll free your spot so someone else can come. Is that OK?')) {
+    if (
+      !window.confirm(
+        rsvpDone
+          ? 'Thanks — we’ll free your spot so someone else can come. Is that OK?'
+          : 'Thanks — we’ll note you can’t make it so Louise can invite someone else. OK?',
+      )
+    ) {
       return
     }
     setCancelBusy(true)
     setRsvpError('')
     try {
-      await releaseSeat(session.id, name)
+      const hadSeat = Boolean(readLocalRsvp(session.id, name)?.place) || rsvpDone
+      if (hadSeat) {
+        await releaseSeat(session.id, name)
+      } else {
+        clearLocalRsvp(session.id, name)
+      }
       cancelGuest(name, session.id)
-      clearLocalRsvp(session.id, name)
       await submitForm('cancel', {
         name,
         session: session.id,
         time: `${session.timeLabel} · ${session.timeEndLabel}`,
         date: session.dateLabel,
-        note: 'Guest cannot attend — please send a replacement invite',
+        note: hadSeat
+          ? 'Guest cannot attend — please send a replacement invite'
+          : 'Guest declined invite — please send a replacement invite',
       })
       setRsvpDone(false)
       setPlace(null)
+      setDeclined(true)
       setTaken(await getSessionTaken(session.id))
     } catch (err) {
       setRsvpError(err instanceof Error ? err.message : 'Something went wrong')
@@ -411,7 +425,15 @@ It's a great opportunity that will book out fast. Andy and I love it, and it's f
             ) : null}
             <p className="form-note">This invitation is just for you — please don’t share the link.</p>
 
-            {rsvpDone ? (
+            {declined ? (
+              <div className="success">
+                <h3>Thanks for letting us know</h3>
+                <p>
+                  We’ve freed that invitation so Louise can offer the spot to someone else. No
+                  worries at all.
+                </p>
+              </div>
+            ) : rsvpDone ? (
               <div className="success">
                 <h3>Your spot is locked.</h3>
                 {place ? (
@@ -500,6 +522,15 @@ It's a great opportunity that will book out fast. Andy and I love it, and it's f
                 {rsvpError ? <p className="form-error">{rsvpError}</p> : null}
                 <button className="btn btn-primary btn-block" type="submit" disabled={rsvpBusy}>
                   {rsvpBusy ? 'Sending…' : 'Claim my spot'}
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-block"
+                  style={{ marginTop: 10 }}
+                  disabled={cancelBusy}
+                  onClick={() => void onCantCome()}
+                >
+                  {cancelBusy ? 'Updating…' : 'Thanks, but I can’t make it'}
                 </button>
               </form>
             )}
