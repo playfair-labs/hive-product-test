@@ -1,5 +1,12 @@
 /** Full feature snapshot: src/preserved/Admin.full.tsx (and README there). */
-import { useEffect, useMemo, useState, type FormEvent } from 'react'
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type FormEvent,
+  type PointerEvent as ReactPointerEvent,
+} from 'react'
 import { SESSION_CAPACITY, SESSIONS, type SessionId } from '../data/sessions'
 import { releaseSeat } from '../lib/attendance'
 import {
@@ -9,14 +16,128 @@ import {
   removeGuest,
   restoreGuest,
   upsertConfirmed,
+  type RosterGuest,
 } from '../lib/roster'
 import { staffSessionLabel } from '../lib/opsStore'
+
+const DELETE_WIDTH = 88
+
+function SwipeGuestRow({
+  guest,
+  canSwipe,
+  open,
+  onOpen,
+  onClose,
+  onDelete,
+}: {
+  guest: RosterGuest
+  canSwipe: boolean
+  open: boolean
+  onOpen: () => void
+  onClose: () => void
+  onDelete: () => void
+}) {
+  const [dragX, setDragX] = useState(0)
+  const [dragging, setDragging] = useState(false)
+  const startX = useRef(0)
+  const startY = useRef(0)
+  const startOffset = useRef(0)
+  const axis = useRef<'x' | 'y' | null>(null)
+  const pointerId = useRef<number | null>(null)
+
+  const offset = canSwipe ? (dragging ? dragX : open ? -DELETE_WIDTH : 0) : 0
+
+  useEffect(() => {
+    if (!canSwipe) {
+      setDragX(0)
+      setDragging(false)
+    }
+  }, [canSwipe])
+
+  function onPointerDown(e: ReactPointerEvent<HTMLDivElement>) {
+    if (!canSwipe) return
+    pointerId.current = e.pointerId
+    e.currentTarget.setPointerCapture(e.pointerId)
+    startX.current = e.clientX
+    startY.current = e.clientY
+    startOffset.current = open ? -DELETE_WIDTH : 0
+    axis.current = null
+    setDragging(true)
+    setDragX(startOffset.current)
+  }
+
+  function onPointerMove(e: ReactPointerEvent<HTMLDivElement>) {
+    if (!canSwipe || !dragging || pointerId.current !== e.pointerId) return
+    const dx = e.clientX - startX.current
+    const dy = e.clientY - startY.current
+    if (!axis.current) {
+      if (Math.abs(dx) < 6 && Math.abs(dy) < 6) return
+      axis.current = Math.abs(dx) > Math.abs(dy) ? 'x' : 'y'
+      if (axis.current === 'y') {
+        setDragging(false)
+        setDragX(0)
+        return
+      }
+    }
+    if (axis.current !== 'x') return
+    const next = Math.min(0, Math.max(-DELETE_WIDTH, startOffset.current + dx))
+    setDragX(next)
+  }
+
+  function endDrag(e: ReactPointerEvent<HTMLDivElement>) {
+    if (!canSwipe || pointerId.current !== e.pointerId) return
+    if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+      e.currentTarget.releasePointerCapture(e.pointerId)
+    }
+    pointerId.current = null
+    if (!dragging) return
+    const final = axis.current === 'x' ? dragX : startOffset.current
+    setDragging(false)
+    axis.current = null
+    if (final <= -DELETE_WIDTH / 2) {
+      onOpen()
+      setDragX(-DELETE_WIDTH)
+    } else {
+      onClose()
+      setDragX(0)
+    }
+  }
+
+  return (
+    <li className={`swipe-row${canSwipe ? ' swipe-row--live' : ''}`}>
+      {canSwipe ? (
+        <div className="swipe-actions" aria-hidden={offset > -DELETE_WIDTH / 3}>
+          <button type="button" className="swipe-delete" onClick={onDelete}>
+            Delete
+          </button>
+        </div>
+      ) : null}
+      <div
+        className={`swipe-front${dragging ? ' is-dragging' : ''}`}
+        style={{ transform: `translateX(${offset}px)` }}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={endDrag}
+        onPointerCancel={endDrag}
+      >
+        <div className="swipe-front-inner">
+          <strong>
+            {guest.place ? `${guest.place}. ` : ''}
+            {guest.name}
+          </strong>
+          <span>{guest.email ? guest.email : 'in'}</span>
+        </div>
+      </div>
+    </li>
+  )
+}
 
 export function Admin() {
   const [tick, setTick] = useState(0)
   const guests = useMemo(() => loadRoster(), [tick])
   const [flash, setFlash] = useState('')
   const [editing, setEditing] = useState<SessionId | null>(null)
+  const [openSwipe, setOpenSwipe] = useState<string | null>(null)
   const [addName, setAddName] = useState('')
   const [addBusy, setAddBusy] = useState(false)
 
@@ -44,16 +165,21 @@ export function Admin() {
   function toggleEdit(id: SessionId) {
     setEditing((cur) => (cur === id ? null : id))
     setAddName('')
+    setOpenSwipe(null)
   }
 
   async function onDelete(id: string, name: string, sessionId: SessionId) {
-    if (!window.confirm(`Remove ${name} from this session?`)) return
+    if (!window.confirm(`Remove ${name} from this session?`)) {
+      setOpenSwipe(null)
+      return
+    }
     removeGuest(id)
     try {
       await releaseSeat(sessionId, name)
     } catch {
       /* roster still updated */
     }
+    setOpenSwipe(null)
     refresh()
     say(`Removed ${name}`)
   }
@@ -155,32 +281,28 @@ export function Admin() {
                   </button>
                 </div>
 
+                {isEditing && rows.length > 0 ? (
+                  <p className="form-note" style={{ marginTop: 10 }}>
+                    Swipe a name left to delete
+                  </p>
+                ) : null}
+
                 {rows.length === 0 ? (
                   <p className="form-note" style={{ marginTop: 12 }}>
                     Nobody confirmed yet.
                   </p>
                 ) : (
-                  <ul className="admin-list" style={{ marginTop: 12 }}>
+                  <ul className="admin-list swipe-list" style={{ marginTop: 12 }}>
                     {rows.map((g) => (
-                      <li key={g.id} className="admin-row">
-                        <div>
-                          <strong>
-                            {g.place ? `${g.place}. ` : ''}
-                            {g.name}
-                          </strong>
-                          <span>{g.email ? g.email : 'in'}</span>
-                        </div>
-                        {isEditing ? (
-                          <div className="admin-row-actions">
-                            <button
-                              type="button"
-                              onClick={() => void onDelete(g.id, g.name, g.sessionId)}
-                            >
-                              Delete
-                            </button>
-                          </div>
-                        ) : null}
-                      </li>
+                      <SwipeGuestRow
+                        key={g.id}
+                        guest={g}
+                        canSwipe={isEditing}
+                        open={openSwipe === g.id}
+                        onOpen={() => setOpenSwipe(g.id)}
+                        onClose={() => setOpenSwipe((cur) => (cur === g.id ? null : cur))}
+                        onDelete={() => void onDelete(g.id, g.name, g.sessionId)}
+                      />
                     ))}
                   </ul>
                 )}
