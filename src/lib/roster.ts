@@ -1,10 +1,10 @@
 import type { SessionId } from '../data/sessions'
-import { SESSION_CAPACITY, isSessionId, resolveSessionId } from '../data/sessions'
+import { SESSION_CAPACITY, SESSIONS, isSessionId, resolveSessionId } from '../data/sessions'
 import { readRsvpLog } from './opsNotify'
 
 const KEY = 'hive-roster-v1'
 
-export type RosterStatus = 'confirmed' | 'invited' | 'removed'
+export type RosterStatus = 'confirmed' | 'invited' | 'cancelled' | 'removed'
 
 export type RosterGuest = {
   id: string
@@ -126,6 +126,65 @@ export function removeGuest(id: string): void {
   saveRoster(guests)
 }
 
+/** Guest said they can’t come — frees the spot for a replacement invite. */
+export function cancelGuest(name: string, sessionId: SessionId): RosterGuest | null {
+  const guests = loadRoster()
+  const at = new Date().toISOString()
+  const existing = guests.find((g) => samePerson(g, name, sessionId) && g.status !== 'removed')
+  if (existing) {
+    const next = guests.map((g) =>
+      g.id === existing.id
+        ? { ...g, status: 'cancelled' as const, place: null, at }
+        : g,
+    )
+    saveRoster(next)
+    return next.find((g) => g.id === existing.id)!
+  }
+  const row: RosterGuest = {
+    id: crypto.randomUUID(),
+    name: name.trim(),
+    email: '',
+    sessionId,
+    place: null,
+    status: 'cancelled',
+    at,
+  }
+  saveRoster([row, ...guests])
+  return row
+}
+
+export function markReplacementSent(id: string): void {
+  const guests = loadRoster().map((g) =>
+    g.id === id && g.status === 'cancelled'
+      ? { ...g, status: 'removed' as const, at: new Date().toISOString() }
+      : g,
+  )
+  saveRoster(guests)
+}
+
+export function needsReplacement(guests: RosterGuest[]): RosterGuest[] {
+  return guests.filter((g) => g.status === 'cancelled')
+}
+
+/** Plain names list for insurance / clipboard — confirmed only. */
+export function exportInsuranceList(guests: RosterGuest[]): string {
+  const lines: string[] = []
+  for (const id of Object.keys(SESSIONS) as SessionId[]) {
+    const rows = guests
+      .filter((g) => g.sessionId === id && g.status === 'confirmed')
+      .sort((a, b) => (a.place ?? 99) - (b.place ?? 99))
+    if (!rows.length) continue
+    lines.push(SESSIONS[id].staffLabel)
+    for (const g of rows) {
+      lines.push(
+        `${g.place ? `${g.place}. ` : ''}${g.name}${g.email ? ` <${g.email}>` : ''}`,
+      )
+    }
+    lines.push('')
+  }
+  return lines.join('\n').trim()
+}
+
 export function restoreGuest(id: string): void {
   const guests = loadRoster()
   const target = guests.find((g) => g.id === id)
@@ -148,13 +207,41 @@ export function hydrateFromRsvpLog(): number {
   )
   let added = 0
   let next = [...guests]
+
   for (const entry of readRsvpLog()) {
-    if (entry.type !== 'rsvp') continue
     const name = entry.name.trim()
     const sessionId = resolveSessionId(entry.session)
     if (!name || !sessionId) continue
     if (removed.has(`${sessionId}:${slug(name)}`)) continue
-    if (next.some((g) => samePerson(g, name, sessionId) && g.status !== 'removed')) continue
+
+    if (entry.type === 'cancel') {
+      const idx = next.findIndex((g) => samePerson(g, name, sessionId) && g.status !== 'removed')
+      if (idx >= 0) {
+        if (next[idx]!.status === 'cancelled') continue
+        next[idx] = {
+          ...next[idx]!,
+          status: 'cancelled',
+          place: null,
+          at: entry.at,
+        }
+      } else {
+        next.unshift({
+          id: crypto.randomUUID(),
+          name,
+          email: entry.email || '',
+          sessionId,
+          place: null,
+          status: 'cancelled',
+          at: entry.at,
+        })
+      }
+      added += 1
+      continue
+    }
+
+    if (entry.type !== 'rsvp') continue
+    if (next.some((g) => samePerson(g, name, sessionId) && g.status === 'confirmed')) continue
+
     const placeRaw = Number(entry.payload.place)
     const place = Number.isFinite(placeRaw) && placeRaw > 0 ? placeRaw : nextPlace(next, sessionId)
     next = [
@@ -167,7 +254,7 @@ export function hydrateFromRsvpLog(): number {
         status: 'confirmed',
         at: entry.at,
       },
-      ...next,
+      ...next.filter((g) => !(samePerson(g, name, sessionId) && g.status !== 'removed')),
     ]
     added += 1
   }

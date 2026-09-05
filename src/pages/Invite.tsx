@@ -1,12 +1,31 @@
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { EVENT, SESSION_CAPACITY, type Session } from '../data/sessions'
-import { claimSeat, readLocalRsvp, saveLocalRsvp } from '../lib/attendance'
-import { upsertConfirmed } from '../lib/roster'
+import {
+  claimSeat,
+  clearLocalRsvp,
+  getSessionTaken,
+  readLocalRsvp,
+  releaseSeat,
+  saveLocalRsvp,
+  SessionFullError,
+} from '../lib/attendance'
+import { downloadSessionCalendar } from '../lib/calendar'
+import { cancelGuest, upsertConfirmed } from '../lib/roster'
 import { submitForm } from '../lib/submit'
 
 const LOUISE_NOTE_FONTS =
   'https://fonts.googleapis.com/css2?family=Great+Vibes&display=swap'
+
+function scarcityLine(taken: number): string {
+  if (taken <= 0) return `${SESSION_CAPACITY} spots for this session — first in, best dressed.`
+  if (taken >= SESSION_CAPACITY) return 'This session is full.'
+  if (taken >= 6) {
+    const left = SESSION_CAPACITY - taken
+    return left === 1 ? 'Only 1 spot left.' : `Only ${left} spots left.`
+  }
+  return `${taken} of ${SESSION_CAPACITY} spots taken.`
+}
 
 function useReveal() {
   const ref = useRef<HTMLElement | null>(null)
@@ -59,15 +78,19 @@ export function Invite({ session }: { session: Session }) {
   const hasLockedName = lockedName.length > 0
 
   const [typedName, setTypedName] = useState('')
+  const [mobile, setMobile] = useState('')
   const [rsvpDone, setRsvpDone] = useState(false)
   const [place, setPlace] = useState<number | null>(null)
   const [rsvpBusy, setRsvpBusy] = useState(false)
   const [rsvpError, setRsvpError] = useState('')
+  const [taken, setTaken] = useState<number | null>(null)
+  const [cancelBusy, setCancelBusy] = useState(false)
 
   const guestName = hasLockedName ? lockedName : typedName.trim()
   const dayTo = guestName
     ? `/${session.id}/day?name=${encodeURIComponent(guestName)}`
     : `/${session.id}/day`
+  const sessionFull = (taken ?? 0) >= SESSION_CAPACITY && !rsvpDone
 
   useEffect(() => {
     const id = 'louise-note-fonts'
@@ -87,13 +110,37 @@ export function Invite({ session }: { session: Session }) {
     setPlace(saved.place)
   }, [hasLockedName, lockedName, session.id])
 
+  useEffect(() => {
+    let cancelled = false
+
+    async function refreshTaken() {
+      const n = await getSessionTaken(session.id)
+      if (!cancelled) setTaken(n)
+    }
+
+    void refreshTaken()
+    function onVis() {
+      if (document.visibilityState === 'visible') void refreshTaken()
+    }
+    document.addEventListener('visibilitychange', onVis)
+    return () => {
+      cancelled = true
+      document.removeEventListener('visibilitychange', onVis)
+    }
+  }, [session.id])
+
   async function onRsvp(e: FormEvent<HTMLFormElement>) {
     e.preventDefault()
     setRsvpError('')
     const fd = new FormData(e.currentTarget)
     const name = (hasLockedName ? lockedName : String(fd.get('name') || '')).trim()
+    const phone = String(fd.get('mobile') || mobile || '').trim()
     if (!name) {
       setRsvpError('Please add your name.')
+      return
+    }
+    if (fd.get('commitment') !== 'on') {
+      setRsvpError('Please confirm you’ll be there.')
       return
     }
     if (fd.get('confidential') !== 'on') {
@@ -103,13 +150,20 @@ export function Invite({ session }: { session: Session }) {
     setRsvpBusy(true)
     try {
       const seat = await claimSeat(session.id, name)
+      if (!seat) {
+        setRsvpError('Couldn’t lock a spot — try again.')
+        return
+      }
       await submitForm('rsvp', {
         name,
         session: session.id,
-        time: session.timeLabel,
+        time: `${session.timeLabel} · ${session.timeEndLabel}`,
+        date: session.dateLabel,
+        mobile: phone,
+        commitment: 'yes',
         confidentiality: 'yes',
         no_photos: 'yes',
-        place: seat ? String(seat) : '',
+        place: String(seat),
         of: String(SESSION_CAPACITY),
       })
       saveLocalRsvp(session.id, name, seat)
@@ -117,10 +171,48 @@ export function Invite({ session }: { session: Session }) {
       if (!hasLockedName) setTypedName(name)
       setPlace(seat)
       setRsvpDone(true)
+      setTaken(await getSessionTaken(session.id))
+    } catch (err) {
+      if (err instanceof SessionFullError) {
+        setTaken(SESSION_CAPACITY)
+        setRsvpError('This session just filled up. Join the waitlist on the day page.')
+      } else {
+        setRsvpError(err instanceof Error ? err.message : 'Something went wrong')
+      }
+    } finally {
+      setRsvpBusy(false)
+    }
+  }
+
+  async function onCantCome() {
+    const name = guestName
+    if (!name) {
+      setRsvpError('Add your name first.')
+      return
+    }
+    if (!window.confirm('Thanks — we’ll free your spot so someone else can come. Is that OK?')) {
+      return
+    }
+    setCancelBusy(true)
+    setRsvpError('')
+    try {
+      await releaseSeat(session.id, name)
+      cancelGuest(name, session.id)
+      clearLocalRsvp(session.id, name)
+      await submitForm('cancel', {
+        name,
+        session: session.id,
+        time: `${session.timeLabel} · ${session.timeEndLabel}`,
+        date: session.dateLabel,
+        note: 'Guest cannot attend — please send a replacement invite',
+      })
+      setRsvpDone(false)
+      setPlace(null)
+      setTaken(await getSessionTaken(session.id))
     } catch (err) {
       setRsvpError(err instanceof Error ? err.message : 'Something went wrong')
     } finally {
-      setRsvpBusy(false)
+      setCancelBusy(false)
     }
   }
 
@@ -202,15 +294,6 @@ export function Invite({ session }: { session: Session }) {
           font-weight: 700;
           opacity: 0.85;
         }
-        .hero-youre-invited {
-          margin: 0 auto;
-          font-family: Georgia, "Times New Roman", serif;
-          font-size: clamp(28px, 7vw, 36px);
-          line-height: 1.1;
-          letter-spacing: -0.02em;
-          color: var(--cream);
-          font-weight: 700;
-        }
         .sheet-product-name {
           margin: 0 0 16px;
           font-family: Georgia, "Times New Roman", serif;
@@ -218,6 +301,17 @@ export function Invite({ session }: { session: Session }) {
           line-height: 1.25;
           color: inherit;
           font-weight: 700;
+        }
+        .spots-live {
+          margin: 0 0 12px;
+          font-family: Georgia, "Times New Roman", serif;
+          font-size: clamp(22px, 5.5vw, 28px);
+          line-height: 1.25;
+          font-weight: 700;
+          color: inherit;
+        }
+        .spots-live.hot {
+          color: #2f6b28;
         }
       `}</style>
       <div className="invite">
@@ -234,7 +328,8 @@ export function Invite({ session }: { session: Session }) {
 
           <aside className="louise-note" aria-label="A note from Louise">
             <p className="louise-note-body">
-              {`Hey guys, my brothers Alan & Lloyd are coming to the Hive! It's a great opportunity that will book out fast. Andy and I love it, and it's free!
+              {`Hey guys, my brothers Alan & Lloyd are coming to the Hive!
+It's a great opportunity that will book out fast. Andy and I love it, and it's free!
 :-)`}
             </p>
             <span className="louise-note-sign">Louise</span>
@@ -243,7 +338,6 @@ export function Invite({ session }: { session: Session }) {
 
           <div className="hero-copy">
             <p className="hero-invite-label">Private invitation</p>
-            <p className="hero-youre-invited">You’re invited</p>
             <p className="hero-when">{session.dateLabel}</p>
             <p className="hero-time">
               {session.timeLabel} · {session.timeEndLabel}
@@ -253,19 +347,18 @@ export function Invite({ session }: { session: Session }) {
         </header>
 
         <div className="sheet">
-          <Section title="You’ve been selected">
-            <p className="sheet-product-name">{EVENT.name}</p>
+          <Section title="New Product Test">
             <p>
               You’ve been invited to test a new product soon to hit the market — developed to
               enhance your game with spin and feel.
             </p>
             <p>
-              You’ll also get to test a new scoring system that maximises your potential, every
-              session.
+              You’ll also get to test a new scoring system that’s super fun and maximises your
+              potential, every session.
             </p>
           </Section>
 
-          <Section eyebrow="Session format" title="Two hours — we’d love you there">
+          <Section eyebrow="Session format">
             <div className="hours">
               <div className="hour">
                 <strong>Hour 1</strong>
@@ -284,17 +377,6 @@ export function Invite({ session }: { session: Session }) {
               <li>No photos during the session, please.</li>
               <li>Please don’t share details about the new product.</li>
             </ul>
-          </Section>
-
-          <Section eyebrow="Your feedback" title="A short chat — only if you want">
-            <p>
-              Near the end we might ask for a quick chat about the product and the scoring. Totally
-              up to you.
-            </p>
-            <p>
-              And if we ever wanted to use that chat in anything public, we’d check with you first —
-              no surprises. Easy to sort on the day.
-            </p>
           </Section>
 
           <Section eyebrow="When & where" id="details">
@@ -321,20 +403,54 @@ export function Invite({ session }: { session: Session }) {
           </Section>
 
           <Section title="We’d love you to join us." id="rsvp">
-            <p className="form-note">Please RSVP by Saturday 12 September.</p>
+            <p className={`spots-live${(taken ?? 0) >= 6 && (taken ?? 0) < SESSION_CAPACITY ? ' hot' : ''}`}>
+              {scarcityLine(taken ?? 0)}
+            </p>
+            {!sessionFull && !rsvpDone ? (
+              <p className="form-note">RSVP below ASAP to get one of the 8 spaces</p>
+            ) : null}
             <p className="form-note">This invitation is just for you — please don’t share the link.</p>
+
             {rsvpDone ? (
               <div className="success">
-                <h3>You’re in.</h3>
+                <h3>Your spot is locked.</h3>
                 {place ? (
                   <p className="seat-count">
                     You are <strong>{place}</strong> of {SESSION_CAPACITY}
                   </p>
                 ) : null}
                 <p>
-                  See you {session.dateShort} at {session.timeLabel}. Keep this page handy for the
-                  day.
+                  See you {session.dateShort} at {session.timeLabel} · {session.timeEndLabel}.
                 </p>
+                <p>Keep this page or take a screenshot — show it when you arrive.</p>
+                <button
+                  type="button"
+                  className="btn btn-dark btn-block"
+                  style={{ marginTop: 14 }}
+                  onClick={() => downloadSessionCalendar(session)}
+                >
+                  Add to calendar
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-block"
+                  style={{ marginTop: 10 }}
+                  disabled={cancelBusy}
+                  onClick={() => void onCantCome()}
+                >
+                  {cancelBusy ? 'Updating…' : 'Thanks, but I can’t make it'}
+                </button>
+              </div>
+            ) : sessionFull ? (
+              <div className="success">
+                <h3>This session is full</h3>
+                <p>
+                  All {SESSION_CAPACITY} spots are taken. You can still join the waitlist on the day
+                  page — if someone drops out, Louise may have a place.
+                </p>
+                <Link className="btn btn-primary btn-block" to={dayTo} style={{ marginTop: 14 }}>
+                  On the day / waitlist
+                </Link>
               </div>
             ) : (
               <form className="form" onSubmit={onRsvp}>
@@ -357,6 +473,24 @@ export function Invite({ session }: { session: Session }) {
                     />
                   </label>
                 )}
+                <label className="field">
+                  Mobile <span style={{ fontWeight: 500, opacity: 0.7 }}>(optional)</span>
+                  <input
+                    name="mobile"
+                    type="tel"
+                    autoComplete="tel"
+                    value={mobile}
+                    onChange={(e) => setMobile(e.target.value)}
+                    placeholder="So we can text a reminder"
+                  />
+                </label>
+                <label className="check">
+                  <input name="commitment" type="checkbox" required />
+                  <span>
+                    I’ll be there. If I can’t make it, I’ll tell the Hive so my spot can go to
+                    someone else.
+                  </span>
+                </label>
                 <label className="check">
                   <input name="confidential" type="checkbox" required />
                   <span>
@@ -365,7 +499,7 @@ export function Invite({ session }: { session: Session }) {
                 </label>
                 {rsvpError ? <p className="form-error">{rsvpError}</p> : null}
                 <button className="btn btn-primary btn-block" type="submit" disabled={rsvpBusy}>
-                  {rsvpBusy ? 'Sending…' : 'Confirm attendance'}
+                  {rsvpBusy ? 'Sending…' : 'Claim my spot'}
                 </button>
               </form>
             )}

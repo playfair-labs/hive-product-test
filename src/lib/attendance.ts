@@ -1,9 +1,17 @@
-import type { SessionId } from '../data/sessions'
+import { SESSION_CAPACITY, type SessionId } from '../data/sessions'
 
 const STORAGE_KEY = 'hive-seat-v1'
+const CANCELLED_KEY = 'hive-seat-cancelled-v1'
 const BASE = 'https://abacus.jasoncameron.dev'
 const NAMESPACE = import.meta.env.DEV ? 'hive-product-test-dev' : 'hive-product-test-19sep2026'
 const TIMEOUT_MS = 7000
+
+export class SessionFullError extends Error {
+  constructor() {
+    super('This session is full.')
+    this.name = 'SessionFullError'
+  }
+}
 
 type StoredSeat = {
   place: number | null
@@ -30,6 +38,10 @@ function personKey(sessionId: SessionId, name: string): string {
   return `${sessionId}--${nameSlug(name)}`
 }
 
+function releasedKey(sessionId: SessionId): string {
+  return `${sessionId}--released`
+}
+
 function readStore(): Record<string, StoredSeat> {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
@@ -38,6 +50,25 @@ function readStore(): Record<string, StoredSeat> {
     return parsed && typeof parsed === 'object' ? parsed : {}
   } catch {
     return {}
+  }
+}
+
+function readCancelled(): Set<string> {
+  try {
+    const raw = localStorage.getItem(CANCELLED_KEY)
+    if (!raw) return new Set()
+    const parsed = JSON.parse(raw) as string[]
+    return new Set(Array.isArray(parsed) ? parsed : [])
+  } catch {
+    return new Set()
+  }
+}
+
+function writeCancelled(set: Set<string>): void {
+  try {
+    localStorage.setItem(CANCELLED_KEY, JSON.stringify([...set]))
+  } catch {
+    /* private browsing */
   }
 }
 
@@ -57,13 +88,22 @@ export function saveLocalRsvp(sessionId: SessionId, name: string, place: number 
   }
 }
 
+export function clearLocalRsvp(sessionId: SessionId, name: string): void {
+  try {
+    const all = readStore()
+    delete all[storageId(sessionId, name)]
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(all))
+  } catch {
+    /* private browsing */
+  }
+}
+
 async function abacus<T>(path: string): Promise<T> {
   const ctrl = new AbortController()
   const t = window.setTimeout(() => ctrl.abort(), TIMEOUT_MS)
   try {
     const res = await fetch(`${BASE}${path}`, { signal: ctrl.signal })
     const data = (await res.json().catch(() => ({}))) as T & { error?: string }
-    // 404 = no seat yet; 409 = that name already claimed
     if (res.ok || res.status === 404 || res.status === 409) return data
     throw new Error(data.error || `Abacus ${res.status}`)
   } finally {
@@ -76,46 +116,94 @@ function readValue(data: { value?: unknown; error?: string }): number | null {
   return Number.isFinite(n) && n > 0 ? n : null
 }
 
+async function getCounter(key: string): Promise<number> {
+  try {
+    const data = await abacus<{ value?: number; error?: string }>(
+      `/get/${NAMESPACE}/${encodeURIComponent(key)}`,
+    )
+    if (data.error) return 0
+    const n = Number(data.value)
+    if (!Number.isFinite(n) || n < 0) return 0
+    return Math.floor(n)
+  } catch {
+    return 0
+  }
+}
+
+/** Live taken count for a session (hits minus released cancellations). */
+export async function getSessionTaken(sessionId: SessionId): Promise<number> {
+  const [hits, released] = await Promise.all([
+    getCounter(sessionId),
+    getCounter(releasedKey(sessionId)),
+  ])
+  return Math.max(0, hits - released)
+}
+
 /**
- * Assign this guest a seat in their session (1–8, or above if we over-accept).
- * Same name + session always gets the same number. Safe to call again.
+ * Assign this guest a seat in their session (1–8).
+ * Same name + session always gets the same number unless they cancelled.
  */
 export async function claimSeat(sessionId: SessionId, name: string): Promise<number | null> {
   const local = readLocalRsvp(sessionId, name)
   if (local?.place && local.place > 0) return local.place
 
+  const mine = personKey(sessionId, name)
+  const cancelled = readCancelled()
+
   try {
-    const mine = personKey(sessionId, name)
-    const existing = await abacus<{ value?: number; error?: string }>(
-      `/get/${NAMESPACE}/${encodeURIComponent(mine)}`,
-    )
-    const already = existing.error ? null : readValue(existing)
-    if (already) {
-      saveLocalRsvp(sessionId, name, already)
-      return already
+    if (!cancelled.has(mine)) {
+      const existing = await abacus<{ value?: number; error?: string }>(
+        `/get/${NAMESPACE}/${encodeURIComponent(mine)}`,
+      )
+      const already = existing.error ? null : readValue(existing)
+      if (already) {
+        saveLocalRsvp(sessionId, name, already)
+        return already
+      }
+    }
+
+    const taken = await getSessionTaken(sessionId)
+    if (taken >= SESSION_CAPACITY) {
+      throw new SessionFullError()
     }
 
     const hit = await abacus<{ value?: number }>(`/hit/${NAMESPACE}/${encodeURIComponent(sessionId)}`)
-    const place = readValue(hit)
-    if (!place) return null
+    const hits = readValue(hit)
+    if (!hits) return null
 
-    const created = await abacus<{ value?: number; error?: string }>(
+    const released = await getCounter(releasedKey(sessionId))
+    const place = hits - released
+    if (place < 1 || place > SESSION_CAPACITY) {
+      throw new SessionFullError()
+    }
+
+    await abacus<{ value?: number; error?: string }>(
       `/create/${NAMESPACE}/${encodeURIComponent(mine)}?initializer=${place}`,
     )
-    if (created.error) {
-      const again = await abacus<{ value?: number; error?: string }>(
-        `/get/${NAMESPACE}/${encodeURIComponent(mine)}`,
-      )
-      const recovered = again.error ? null : readValue(again)
-      if (recovered) {
-        saveLocalRsvp(sessionId, name, recovered)
-        return recovered
-      }
+
+    if (cancelled.has(mine)) {
+      cancelled.delete(mine)
+      writeCancelled(cancelled)
     }
 
     saveLocalRsvp(sessionId, name, place)
     return place
-  } catch {
+  } catch (err) {
+    if (err instanceof SessionFullError) throw err
     return null
+  }
+}
+
+/** Free a spot after “I can’t come” — increments released so FOMO count drops. */
+export async function releaseSeat(sessionId: SessionId, name: string): Promise<void> {
+  clearLocalRsvp(sessionId, name)
+  const mine = personKey(sessionId, name)
+  const cancelled = readCancelled()
+  cancelled.add(mine)
+  writeCancelled(cancelled)
+  try {
+    await abacus(`/hit/${NAMESPACE}/${encodeURIComponent(releasedKey(sessionId))}`)
+  } catch {
+    /* email still notifies Louise */
   }
 }

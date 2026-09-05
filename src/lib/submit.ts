@@ -1,7 +1,7 @@
 import { EVENT } from '../data/sessions'
 import { notifyOpsBoard } from './opsNotify'
 
-export type FormKind = 'rsvp' | 'waitlist' | 'consent'
+export type FormKind = 'rsvp' | 'waitlist' | 'consent' | 'cancel'
 
 type Payload = Record<string, string>
 

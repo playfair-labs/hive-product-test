@@ -1,4 +1,4 @@
-import { useMemo, useState, type FormEvent } from 'react'
+import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { SESSION_CAPACITY, SESSIONS, type SessionId } from '../data/sessions'
 import { lockAdmin } from '../lib/adminAuth'
@@ -6,10 +6,13 @@ import { copyText, emailBody, emailSubject, mailtoHref } from '../lib/inviteMail
 import {
   activeConfirmed,
   addInvited,
+  exportInsuranceList,
   exportRosterText,
   hydrateFromRsvpLog,
   importRosterLines,
   loadRoster,
+  markReplacementSent,
+  needsReplacement,
   removeGuest,
   restoreGuest,
   upsertConfirmed,
@@ -22,7 +25,7 @@ function asGuest(row: RosterGuest): Guest {
     id: row.id,
     name: row.name,
     email: row.email,
-    level: row.sessionId === 'sat-9am' ? 'beginner' : row.sessionId === 'sat-6pm' ? 'intermediate' : 'advanced',
+    level: SESSIONS[row.sessionId].level,
     sessionId: row.sessionId,
     kind: 'wave1',
     status: row.status === 'confirmed' ? 'confirmed' : 'sent',
@@ -39,6 +42,18 @@ export function Admin() {
   const [addSession, setAddSession] = useState<SessionId>('sat-9am')
   const [paste, setPaste] = useState('')
 
+  const replacements = needsReplacement(guests)
+
+  useEffect(() => {
+    document.title =
+      replacements.length > 0
+        ? `(${replacements.length}) Hive Admin — need replacement`
+        : 'Hive Admin'
+    return () => {
+      document.title = 'The Hive Product Test · Private Invitation'
+    }
+  }, [replacements.length])
+
   function refresh() {
     setTick((n) => n + 1)
   }
@@ -49,7 +64,7 @@ export function Admin() {
   }
 
   const visible = guests.filter((g) => {
-    if (g.status === 'removed') return false
+    if (g.status === 'removed' || g.status === 'cancelled') return false
     if (filter === 'all') return true
     return g.sessionId === filter
   })
@@ -106,12 +121,18 @@ export function Admin() {
   function onHydrate() {
     const n = hydrateFromRsvpLog()
     refresh()
-    say(n ? `Added ${n} from this phone’s RSVP log` : 'No new RSVPs on this phone')
+    say(n ? `Synced ${n} from this phone’s log` : 'No new RSVPs on this phone')
   }
 
-  async function onExport() {
+  async function onExportCsv() {
     const ok = await copyText(exportRosterText(loadRoster()))
-    say(ok ? 'List copied' : 'Copy failed')
+    say(ok ? 'CSV-style list copied' : 'Copy failed')
+  }
+
+  async function onInsuranceCopy() {
+    const text = exportInsuranceList(loadRoster())
+    const ok = await copyText(text || 'No confirmed players yet.')
+    say(ok ? 'Insurance list copied' : 'Copy failed')
   }
 
   function onImport(e: FormEvent) {
@@ -126,14 +147,52 @@ export function Admin() {
     <div className="stage">
       <div className="invite louise">
         <div className="louise-page ops-page">
-          <p className="eyebrow">Staff · live list</p>
+          <p className="eyebrow">Louise &amp; Alan · who’s coming</p>
           <h1 className="louise-title">Admin</h1>
           <p className="louise-lead">
-            RSVPs also email <strong>play@</strong>. This list lives on this phone — add people from
-            that inbox if they confirmed elsewhere. Remove frees a spot for a replacement invite.
+            One tap from your home screen. Lists are by session. RSVPs also email{' '}
+            <strong>play@</strong> — paste from that inbox if someone confirmed on another phone.
           </p>
 
           {flash ? <p className="ops-flash">{flash}</p> : null}
+
+          {replacements.length > 0 ? (
+            <section
+              className="ops-card"
+              style={{
+                marginTop: 12,
+                border: '2px solid #b42318',
+                background: 'rgba(180, 35, 24, 0.08)',
+              }}
+            >
+              <h2 style={{ color: '#b42318' }}>Need replacement · {replacements.length}</h2>
+              <p className="form-note">
+                These people can’t come. Send another invite from your SMS list, then tap Done.
+              </p>
+              <ul className="admin-list">
+                {replacements.map((g) => (
+                  <li key={g.id} className="admin-row">
+                    <div>
+                      <strong>{g.name}</strong>
+                      <span>{staffSessionLabel(g.sessionId)} · cancelled</span>
+                    </div>
+                    <div className="admin-row-actions">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          markReplacementSent(g.id)
+                          refresh()
+                          say(`Cleared ${g.name}`)
+                        }}
+                      >
+                        Replacement sent
+                      </button>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ) : null}
 
           <div className="ops-capacity">
             {(Object.keys(SESSIONS) as SessionId[]).map((id) => (
@@ -147,11 +206,14 @@ export function Admin() {
           </div>
 
           <div className="louise-toolbar">
+            <button type="button" className="btn btn-primary" onClick={() => void onInsuranceCopy()}>
+              Copy list (insurance)
+            </button>
             <button type="button" className="btn btn-dark" onClick={onHydrate}>
               Pull from this phone
             </button>
-            <button type="button" className="btn btn-dark" onClick={onExport}>
-              Copy list
+            <button type="button" className="btn btn-dark" onClick={() => void onExportCsv()}>
+              Copy CSV
             </button>
             <Link className="btn btn-dark" to="/ops">
               Full console
@@ -167,6 +229,73 @@ export function Admin() {
               Log out
             </button>
           </div>
+
+          <div className="louise-toolbar" style={{ marginTop: 12 }}>
+            {(Object.keys(SESSIONS) as SessionId[]).map((id) => (
+              <button
+                key={id}
+                type="button"
+                className={filter === id ? 'btn btn-primary' : 'btn btn-dark'}
+                onClick={() => setFilter(id)}
+              >
+                {staffSessionLabel(id)}
+              </button>
+            ))}
+            <button
+              type="button"
+              className={filter === 'all' ? 'btn btn-primary' : 'btn btn-dark'}
+              onClick={() => setFilter('all')}
+            >
+              All
+            </button>
+          </div>
+
+          {(Object.keys(SESSIONS) as SessionId[])
+            .filter((id) => filter === 'all' || filter === id)
+            .map((id) => {
+              const rows = guests
+                .filter((g) => g.sessionId === id && g.status === 'confirmed')
+                .sort((a, b) => (a.place ?? 99) - (b.place ?? 99))
+              return (
+                <section key={id} className="ops-card" style={{ marginTop: 12 }}>
+                  <h2>
+                    {staffSessionLabel(id)}{' '}
+                    <span style={{ fontWeight: 500, opacity: 0.7 }}>
+                      {rows.length}/{SESSION_CAPACITY}
+                    </span>
+                  </h2>
+                  {rows.length === 0 ? (
+                    <p className="form-note">Nobody confirmed yet.</p>
+                  ) : (
+                    <ul className="admin-list">
+                      {rows.map((g) => (
+                        <li key={g.id} className="admin-row">
+                          <div>
+                            <strong>
+                              {g.place ? `${g.place}. ` : ''}
+                              {g.name}
+                            </strong>
+                            <span>{g.email ? g.email : 'in'}</span>
+                          </div>
+                          <div className="admin-row-actions">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                removeGuest(g.id)
+                                refresh()
+                                say(`Removed ${g.name}`)
+                              }}
+                            >
+                              Remove
+                            </button>
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </section>
+              )
+            })}
 
           <section className="ops-card" style={{ marginTop: 16 }}>
             <h2>Invite or add</h2>
@@ -205,63 +334,44 @@ export function Admin() {
                 Mark as already confirmed
               </button>
             </form>
-          </section>
-
-          <div className="louise-toolbar" style={{ marginTop: 12 }}>
-            {(Object.keys(SESSIONS) as SessionId[]).map((id) => (
-              <button
-                key={id}
-                type="button"
-                className={filter === id ? 'btn btn-primary' : 'btn btn-dark'}
-                onClick={() => setFilter(id)}
-              >
-                {staffSessionLabel(id)}
-              </button>
-            ))}
-            <button
-              type="button"
-              className={filter === 'all' ? 'btn btn-primary' : 'btn btn-dark'}
-              onClick={() => setFilter('all')}
-            >
-              All
-            </button>
-          </div>
-
-          <section className="ops-card" style={{ marginTop: 12 }}>
-            <h2>Players</h2>
-            {visible.length === 0 ? (
-              <p className="form-note">Nobody here yet. Confirm on this phone, or add from play@.</p>
-            ) : (
-              <ul className="admin-list">
-                {visible.map((g) => (
-                  <li key={g.id} className="admin-row">
-                    <div>
-                      <strong>{g.name}</strong>
-                      <span>
-                        {staffSessionLabel(g.sessionId)}
-                        {g.place ? ` · ${g.place} of ${SESSION_CAPACITY}` : ''}
-                        {g.status === 'invited' ? ' · invited' : ' · in'}
-                        {g.email ? ` · ${g.email}` : ''}
-                      </span>
-                    </div>
-                    <div className="admin-row-actions">
-                      <button type="button" onClick={() => copyLink(g)}>
-                        Copy link
-                      </button>
-                      <button type="button" onClick={() => mailInvite(g)}>
-                        Email
-                      </button>
-                      <button type="button" onClick={() => copyEmail(g)}>
-                        Copy email
-                      </button>
-                      <button type="button" onClick={() => { removeGuest(g.id); refresh(); say(`Removed ${g.name}`) }}>
-                        Remove
-                      </button>
-                    </div>
-                  </li>
-                ))}
+            {visible.some((g) => g.status === 'invited') ? (
+              <ul className="admin-list" style={{ marginTop: 12 }}>
+                {visible
+                  .filter((g) => g.status === 'invited')
+                  .map((g) => (
+                    <li key={g.id} className="admin-row">
+                      <div>
+                        <strong>{g.name}</strong>
+                        <span>
+                          {staffSessionLabel(g.sessionId)} · invited
+                          {g.email ? ` · ${g.email}` : ''}
+                        </span>
+                      </div>
+                      <div className="admin-row-actions">
+                        <button type="button" onClick={() => void copyLink(g)}>
+                          Copy link
+                        </button>
+                        <button type="button" onClick={() => mailInvite(g)}>
+                          Email
+                        </button>
+                        <button type="button" onClick={() => void copyEmail(g)}>
+                          Copy email
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            removeGuest(g.id)
+                            refresh()
+                            say(`Removed ${g.name}`)
+                          }}
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    </li>
+                  ))}
               </ul>
-            )}
+            ) : null}
           </section>
 
           {guests.some((g) => g.status === 'removed') ? (
