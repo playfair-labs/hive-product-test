@@ -1,6 +1,6 @@
-import { useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { EVENT, isDayPageOpen, type Session } from '../data/sessions'
+import { isDayPageOpen, type Session } from '../data/sessions'
 import { submitForm } from '../lib/submit'
 
 export function Day({ session }: { session: Session }) {
@@ -19,6 +19,10 @@ export function Day({ session }: { session: Session }) {
   const backTo = hasName
     ? `/${session.id}?name=${encodeURIComponent(guestName)}`
     : `/${session.id}`
+
+  useEffect(() => {
+    window.scrollTo(0, 0)
+  }, [session.id])
 
   async function onWaitlist(e: FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -88,6 +92,57 @@ export function Day({ session }: { session: Session }) {
 
           {open ? (
             <>
+              <p className="eyebrow">Optional</p>
+              <h2 className="day-heading">A quick chat on camera?</h2>
+              <p>
+                We are a small company, just starting out and we’d love to be able to capture the
+                excitement of your day, so we can show others how great it is. We’d also like to be
+                able to use that in the future to share as a testimonial. If you are happy to do
+                that, please fill out the section below. Thanks
+              </p>
+              <p className="form-note" style={{ marginBottom: 16 }}>
+                Your session: {session.dateShort} · {session.timeLabel} · {session.timeEndLabel}
+              </p>
+
+              {consentDone ? (
+                <div className="success">
+                  <h3>Thank you</h3>
+                  <p>You’re all set. Enjoy the rest of the session.</p>
+                </div>
+              ) : (
+                <form className="form" onSubmit={onConsent}>
+                  <label className="field">
+                    Full name
+                    <input
+                      name="name"
+                      type="text"
+                      autoComplete="name"
+                      required
+                      defaultValue={guestName}
+                      readOnly={hasName}
+                      placeholder="Your full name"
+                    />
+                  </label>
+                  <label className="check">
+                    <input name="film" type="checkbox" required />
+                    <span>I’m happy to be filmed for a short interview today.</span>
+                  </label>
+                  <label className="check">
+                    <input name="promo" type="checkbox" />
+                    <span>
+                      I’m happy for The Pickleball Hive to use this interview for promotional
+                      purposes.
+                    </span>
+                  </label>
+                  {consentError ? <p className="form-error">{consentError}</p> : null}
+                  <button className="btn btn-primary btn-block" type="submit" disabled={consentBusy}>
+                    {consentBusy ? 'Saving…' : 'Agree & sign with my name'}
+                  </button>
+                </form>
+              )}
+
+              <hr className="day-rule" />
+
               <p className="eyebrow">On the day · or anytime</p>
               <h2 className="day-heading">Want to be among the first?</h2>
               <p>
@@ -144,59 +199,6 @@ export function Day({ session }: { session: Session }) {
                   {waitError ? <p className="form-error">{waitError}</p> : null}
                   <button className="btn btn-dark btn-block" type="submit" disabled={waitBusy}>
                     {waitBusy ? 'Sending…' : 'Keep me first in line'}
-                  </button>
-                </form>
-              )}
-
-              <hr className="day-rule" />
-
-              <p className="eyebrow">Optional · day of</p>
-              <h2 className="day-heading">A quick chat on camera?</h2>
-              <p>
-                Near the end of your session we may ask for a short, friendly interview about what
-                you tried. Totally optional — say no and that’s perfectly fine.
-              </p>
-              <p>
-                If you’re happy to take part, we might use a clip to help tell the story of{' '}
-                {EVENT.name}. We’d only do that with your say-so below.
-              </p>
-              <p className="form-note" style={{ marginBottom: 16 }}>
-                Your session: {session.dateShort} · {session.timeLabel} · {session.timeEndLabel}
-              </p>
-
-              {consentDone ? (
-                <div className="success">
-                  <h3>Thank you</h3>
-                  <p>You’re all set. Enjoy the rest of the session.</p>
-                </div>
-              ) : (
-                <form className="form" onSubmit={onConsent}>
-                  <label className="field">
-                    Full name
-                    <input
-                      name="name"
-                      type="text"
-                      autoComplete="name"
-                      required
-                      defaultValue={guestName}
-                      readOnly={hasName}
-                      placeholder="Your full name"
-                    />
-                  </label>
-                  <label className="check">
-                    <input name="film" type="checkbox" required />
-                    <span>I’m happy to be filmed for a short interview today.</span>
-                  </label>
-                  <label className="check">
-                    <input name="promo" type="checkbox" />
-                    <span>
-                      I’m happy for The Pickleball Hive to use this interview for promotional
-                      purposes.
-                    </span>
-                  </label>
-                  {consentError ? <p className="form-error">{consentError}</p> : null}
-                  <button className="btn btn-primary btn-block" type="submit" disabled={consentBusy}>
-                    {consentBusy ? 'Saving…' : 'Agree & sign with my name'}
                   </button>
                 </form>
               )}

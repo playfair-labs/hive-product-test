@@ -17,6 +17,9 @@ import { submitForm } from '../lib/submit'
 const LOUISE_NOTE_FONTS =
   'https://fonts.googleapis.com/css2?family=Great+Vibes&display=swap'
 
+/** Keep cant-come flow in code; set true to show the guest decline buttons again. */
+const SHOW_CANT_COME = false
+
 function scarcityLine(taken: number): string {
   if (taken <= 0) return `${SESSION_CAPACITY} spots for this session — first in, best dressed.`
   if (taken >= SESSION_CAPACITY) return 'This session is full.'
@@ -453,15 +456,17 @@ It's a great opportunity that will book out fast. Andy and I love it, and it's f
                 >
                   Add to calendar
                 </button>
-                <button
-                  type="button"
-                  className="btn btn-block"
-                  style={{ marginTop: 10 }}
-                  disabled={cancelBusy}
-                  onClick={() => void onCantCome()}
-                >
-                  {cancelBusy ? 'Updating…' : 'Thanks, but I can’t make it'}
-                </button>
+                {SHOW_CANT_COME ? (
+                  <button
+                    type="button"
+                    className="btn btn-block"
+                    style={{ marginTop: 10 }}
+                    disabled={cancelBusy}
+                    onClick={() => void onCantCome()}
+                  >
+                    {cancelBusy ? 'Updating…' : 'Thanks, but I can’t make it'}
+                  </button>
+                ) : null}
               </div>
             ) : sessionFull ? (
               <div className="success">
@@ -523,15 +528,17 @@ It's a great opportunity that will book out fast. Andy and I love it, and it's f
                 <button className="btn btn-primary btn-block" type="submit" disabled={rsvpBusy}>
                   {rsvpBusy ? 'Sending…' : 'Claim my spot'}
                 </button>
-                <button
-                  type="button"
-                  className="btn btn-block"
-                  style={{ marginTop: 10 }}
-                  disabled={cancelBusy}
-                  onClick={() => void onCantCome()}
-                >
-                  {cancelBusy ? 'Updating…' : 'Thanks, but I can’t make it'}
-                </button>
+                {SHOW_CANT_COME ? (
+                  <button
+                    type="button"
+                    className="btn btn-block"
+                    style={{ marginTop: 10 }}
+                    disabled={cancelBusy}
+                    onClick={() => void onCantCome()}
+                  >
+                    {cancelBusy ? 'Updating…' : 'Thanks, but I can’t make it'}
+                  </button>
+                ) : null}
               </form>
             )}
           </Section>
