@@ -150,7 +150,7 @@ export function Day({ session }: { session: Session }) {
 
               {waitDone ? (
                 <div className="success">
-                  <h3>You’re on the list</h3>
+                  <h3>You’re on the list!</h3>
                   <p>We’ll be in touch when it’s time. Thank you.</p>
                 </div>
               ) : (
