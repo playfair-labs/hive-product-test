@@ -130,8 +130,7 @@ export function Day({ session }: { session: Session }) {
                   <label className="check">
                     <input name="promo" type="checkbox" />
                     <span>
-                      I’m happy for The Pickleball Hive to use this interview for promotional
-                      purposes.
+                      I’m happy for my interview and highlights to be used for promotional purposes.
                     </span>
                   </label>
                   {consentError ? <p className="form-error">{consentError}</p> : null}
